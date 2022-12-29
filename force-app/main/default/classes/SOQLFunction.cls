@@ -96,7 +96,7 @@ public with sharing class SOQLFunction {
         if (innerFunction != null) {
             return this.name.name() + '(' + this.innerFunction.toString() + ')';
         }
-        String fields = DatabaseUtil.convertFieldsToString(this.fieldNames);
+        String fields = String.join(this.fieldNames,',');
         String alias = this.alias==null?'':+' '+this.alias;
         return this.name.name() + '(' + fields + ')'+alias;
     }

@@ -1,6 +1,4 @@
-/**
- * Created by adria on 2022. 09. 21..
- */
+
 
 public enum FilterScope {
     delegated,

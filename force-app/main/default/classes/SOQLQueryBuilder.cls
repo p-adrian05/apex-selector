@@ -118,15 +118,16 @@ public with sharing class SOQLQueryBuilder {
         return this;
     }
     public SOQLQueryBuilder selectCustomFields(Boolean includeLargeText){
-        this.fields.addAll(DatabaseUtil.getCustomFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
+        this.fields.addAll(getCustomFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
+        this.fields.add(DEFAULT_FIELD);
         return this;
     }
     public SOQLQueryBuilder selectAllFields(Boolean includeLargeText){
-        this.fields.addAll(DatabaseUtil.getAllFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
+        this.fields.addAll(getAllFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
         return this;
     }
     public SOQLQueryBuilder selectStandardFields(){
-        this.fields.addAll(DatabaseUtil.getStandardFieldNamesForSObjectType(this.sObjectTypeName));
+        this.fields.addAll(getStandardFieldNamesForSObjectType(this.sObjectTypeName));
         return this;
     }
     public SOQLQueryBuilder selectSpecificFields(List<SObjectField> fields){
@@ -377,6 +378,9 @@ public with sharing class SOQLQueryBuilder {
     public List<SObject> getResultList(){
         return Database.query(generateQuery(null));
     }
+    public Map<Id,SObject> getResultMap(){
+        return new Map<Id, SObject>(getResultList());
+    }
     public SObject getSingleResult(){
         List<SObject> sObjects = getResultList();
         return sObjects.size() > 0 ? sObjects.get(0) : null;
@@ -410,7 +414,7 @@ public with sharing class SOQLQueryBuilder {
         String forReferenceStatement = this.forReference ? FOR_REFERENCE_STR : '';
         String allRowsStatement = this.allRows ? ALL_ROWS_STR : '';
         String offsetStatement = this.offsetNumber!=null ? OFFSET_STR+' '+this.offsetNumber: '';
-        String groupByStatement = this.groupByFields.size()>0 ? GROUP_BY_STR+' '+DatabaseUtil.convertFieldsToString(this.groupByFields): '';
+        String groupByStatement = this.groupByFields.size()>0 ? GROUP_BY_STR+' '+String.join(new List<String>(this.groupByFields),','): '';
         String strCustomWhereStatement = this.strWhereStatement !=null ? this.strWhereStatement : '';
         String withStatement = this.withStatement !=null ? WITH_STR+' '+this.withStatement : '';
         String usingScopeStatement = this.usingScopeStatement !=null ? USING_SCOPE_STR+' '+this.usingScopeStatement : '';
@@ -424,7 +428,7 @@ public with sharing class SOQLQueryBuilder {
             this.fields.add(DEFAULT_FIELD);
         }
 
-        String queryStatement = SELECT_STR+' '+DatabaseUtil.convertFieldsToString(this.fields);
+        String queryStatement = SELECT_STR+' '+String.join(new List<String>(this.fields),',');
 
         if(innerQueryString.length()>0){
             queryStatement+=','+innerQueryString;
@@ -492,7 +496,8 @@ public with sharing class SOQLQueryBuilder {
         if(this.innerQueries.size()>0){
 
             for(SOQLQueryBuilder innerQueryBuilder:innerQueries){
-                innerQueryString += '('+innerQueryBuilder.generateQuery(DatabaseUtil.getChildRelationshipName(this.sObjectTypeName,innerQueryBuilder.sObjectTypeName))+'),';
+                innerQueryString += '('+innerQueryBuilder.generateQuery(
+                       getChildRelationshipName(this.sObjectTypeName,innerQueryBuilder.sObjectTypeName))+'),';
             }
             innerQueryString = innerQueryString.substring(0,innerQueryString.lastIndexOf(','));
         }
@@ -507,7 +512,7 @@ public with sharing class SOQLQueryBuilder {
                         parentQueryBuilder.parentSObjectTypeName : convertSObjectTypeNameToParent(parentQueryBuilder.sObjectTypeName);
 
                 Set<String> parentFields = convertFieldsToParentFields(sObjectTypeName,parentQueryBuilder.fields);
-                parentFieldsString += DatabaseUtil.convertFieldsToString(parentFields)+',';
+                parentFieldsString += String.join(new List<String>(parentFields),',')+',';
             }
             parentFieldsString = parentFieldsString.substring(0,parentFieldsString.lastIndexOf(','));
         }
@@ -551,7 +556,7 @@ public with sharing class SOQLQueryBuilder {
         String closeBracket = this.fieldNameCloseBracketMap.get(fieldNameId) == null? ' ': this.fieldNameCloseBracketMap.get(fieldNameId);
 
         if(value instanceof String){
-            valueString = '\''+value+'\'';
+            valueString = '\''+String.escapeSingleQuotes((String) value)+'\'';
         }else if(value instanceof List<Object>){
             valueString = convertListToString((List<Object>) value);
         }else if(value instanceof Datetime){
@@ -577,7 +582,7 @@ public with sharing class SOQLQueryBuilder {
         String str = OPEN_BRACKET;
         for(Object obj:objects){
             if(obj instanceof String){
-                str += '\''+obj+'\',';
+                str += '\''+String.escapeSingleQuotes((String) obj)+'\',';
             }else if(obj instanceof Datetime){
                 str += ((Datetime) obj).formatGmt('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'')+',';
             }else{
@@ -625,6 +630,62 @@ public with sharing class SOQLQueryBuilder {
     }
     private String extractFieldNameFromId(String idStr){
         return idStr.substring(0,idStr.indexOf(':'));
+    }
+
+    public static List<String> getAllFieldNamesForSObjectType(String sObjectTypeName,Boolean includeLargeText){
+        return getFieldNamesForSObject(sObjectTypeName,true,true,includeLargeText);
+    }
+    public static List<String> getStandardFieldNamesForSObjectType(String sObjectType){
+        return getFieldNamesForSObject(sObjectType,false,true,true);
+    }
+    public static List<String> getCustomFieldNamesForSObjectType(String sObjectType,Boolean includeLargeText){
+        return getFieldNamesForSObject(sObjectType,true,false,includeLargeText);
+    }
+
+    private static List<String> getFieldNamesForSObject(String objectType,Boolean isCustom,Boolean isStandard,Boolean includeLargeText){
+        List<String> fieldNames = new List<String>();
+        List<Schema.SObjectField> sObjectFields = getFieldsForSObject(objectType,isCustom,isStandard,includeLargeText);
+
+        for(Schema.SObjectField field: sObjectFields){
+            fieldNames.add(field.getDescribe().getName());
+        }
+        return fieldNames;
+    }
+    public static List<SObjectField> getFieldsForSObject(String objectType,Boolean isCustom,Boolean isStandard,Boolean includeLargeText){
+        List<Schema.SObjectField> fieldsToReturn = new List<Schema.SObjectField>();
+        List<Schema.SObjectField> sObjectFields = getAllFieldsForSObjectType(objectType);
+
+        for(Schema.SObjectField field: sObjectFields){
+            if((isCustom && field.getDescribe().isCustom()) || (isStandard && !field.getDescribe().isCustom())){
+                if(!includeLargeText && field.getDescribe().getLength() > 255 ){
+                    continue;
+                }
+                fieldsToReturn.add(field);
+            }
+        }
+        return fieldsToReturn;
+    }
+    public static List<Schema.SObjectField> getAllFieldsForSObjectType(String sObjectTypeName){
+        SObjectType type = Schema.getGlobalDescribe().get(sObjectTypeName);
+        Map<String,Schema.SObjectField> sObjectFields = type.getDescribe().fields.getMap();
+
+        return sObjectFields.values();
+    }
+    public static String getChildRelationshipName(String parentSobjectName, String childSobjectName) {
+        SObjectType parentsObjType = ((SObject) Type.forName(parentSobjectName).newInstance())
+                .getSObjectType();
+        SObjectType childSObjectType = ((SObject) Type.forName(childSobjectName).newInstance())
+                .getSObjectType();
+        return getChildRelationshipName(parentsObjType,childSObjectType);
+    }
+
+    public static String getChildRelationshipName(SObjectType parentSObjectType, SObjectType childSObjectType) {
+        for(Schema.ChildRelationship childRelationShip :parentSObjectType.getDescribe().getChildRelationships()){
+            if(childRelationShip.getChildSObject() ==childSObjectType){
+                return childRelationShip.getRelationshipName();
+            }
+        }
+        return null;
     }
 
 }

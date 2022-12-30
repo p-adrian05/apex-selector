@@ -80,9 +80,9 @@ public with sharing class SOQLQueryBuilderTest {
     public static void testQueryAccountsByNameAndAccountLevelDiscountShouldReturnAccounts(){
         SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder('Account')
                 .selectSpecificFields(new List<SObjectField>{Account.Name,Account.AccountSource,Account.NumberOfEmployees})
-                .whereWithOpenBracket(Account.Name)
+                .whereOpenBracket(Account.Name)
                 .likeValue('%'+ACCOUNT_NAME+'%')
-                .andWithCloseBracket(Account.NumberOfEmployees)
+                .andCloseBracket(Account.NumberOfEmployees)
                 .greaterThan(20)
                 .orCondition(Account.NumberOfEmployees)
                 .lessThan(10)
@@ -188,18 +188,18 @@ public with sharing class SOQLQueryBuilderTest {
                 .addFunction(countFunction)
                 .whereClause(Account.Name)
                 .likeValue('%'+ACCOUNT_NAME+'%')
-                .orWithOpenBracket(Account.Name)
+                .orOpenBracket(Account.Name)
                 .notLikeValue('%builder%')
-                .orWithCloseBracket(Account.NumberOfEmployees)
+                .orCloseBracket(Account.NumberOfEmployees)
                 .greaterOrEquals(12)
                 .groupBy(Account.AccountSource)
-                .havingWithOpenBracket(countFunction)
+                .havingOpenBracket(countFunction)
                 .greaterThan(1)
-                .orWithCloseBracket(countFunction.toString())
+                .orCloseBracket(countFunction.toString())
                 .lessThan(100)
-                .andWithOpenBracket(countFunction.toString())
+                .andOpenBracket(countFunction.toString())
                 .greaterOrEquals(100)
-                .orWithCloseBracket(countFunction.toString())
+                .orCloseBracket(countFunction.toString())
                 .lessOrEquals(10);
 
         String expectedQueryString = 'SELECT AccountSource,COUNT(Id) FROM Account WHERE ' +
@@ -254,9 +254,9 @@ public with sharing class SOQLQueryBuilderTest {
                 .selectSpecificFields(new List<SObjectField>{Lead.City})
                 .addFunction(countFunction)
                 .groupBy(Lead.City)
-                .havingWithOpenBracket(Lead.City)
+                .havingOpenBracket(Lead.City)
                 .likeValue('%San')
-                .andWithCloseBracket(countFunction.toString())
+                .andCloseBracket(countFunction.toString())
                 .greaterThan(1);
 
         String expectedQueryString = 'SELECT City,COUNT(Name) FROM Lead GROUP BY City ' +
@@ -434,9 +434,9 @@ public with sharing class SOQLQueryBuilderTest {
         SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
                 .whereClause(Account.Name)
                 .likeValue('%'+ACCOUNT_NAME+'%')
-                .andWithOpenBracket(Account.Name)
+                .andOpenBracket(Account.Name)
                 .notEquals('fail')
-                .andWithCloseBracket(Account.Name)
+                .andCloseBracket(Account.Name)
                 .notEquals('')
                 .allRows()
                 .withSecurityEnforced();

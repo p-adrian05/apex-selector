@@ -244,10 +244,10 @@ public with sharing class SOQLQueryBuilder {
         setLogicalOperator(fieldName,'');
         return this;
     }
-    public SOQLQueryBuilder whereWithOpenBracket(SObjectField field){
-        return whereWithOpenBracket(field.getDescribe().getName());
+    public SOQLQueryBuilder whereOpenBracket(SObjectField field){
+        return whereOpenBracket(field.getDescribe().getName());
     }
-    public SOQLQueryBuilder whereWithOpenBracket(String fieldName){
+    public SOQLQueryBuilder whereOpenBracket(String fieldName){
         this.isWhereStatement = true;
         String fieldNameId = setLogicalOperator(fieldName,'');
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
@@ -266,18 +266,18 @@ public with sharing class SOQLQueryBuilder {
         havingClause(function.toString());
         return this;
     }
-    public SOQLQueryBuilder havingWithOpenBracket(String fieldName){
+    public SOQLQueryBuilder havingOpenBracket(String fieldName){
         this.isWhereStatement = false;
         String fieldNameId = setLogicalOperator(fieldName,'');
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
-    public SOQLQueryBuilder havingWithOpenBracket(SObjectField field){
-        havingWithOpenBracket(field.getDescribe().getName());
+    public SOQLQueryBuilder havingOpenBracket(SObjectField field){
+        havingOpenBracket(field.getDescribe().getName());
         return this;
     }
-    public SOQLQueryBuilder havingWithOpenBracket(SOQLFunction function){
-        havingWithOpenBracket(function.toString());
+    public SOQLQueryBuilder havingOpenBracket(SOQLFunction function){
+        havingOpenBracket(function.toString());
         return this;
     }
     public SOQLQueryBuilder andCondition(SObjectField field){
@@ -287,18 +287,18 @@ public with sharing class SOQLQueryBuilder {
         setLogicalOperator(fieldName,OP_AND);
         return this;
     }
-    public SOQLQueryBuilder andWithOpenBracket(SObjectField field){
-        return andWithOpenBracket(field.getDescribe().getName());
+    public SOQLQueryBuilder andOpenBracket(SObjectField field){
+        return andOpenBracket(field.getDescribe().getName());
     }
-    public SOQLQueryBuilder andWithOpenBracket(String fieldName){
+    public SOQLQueryBuilder andOpenBracket(String fieldName){
         String fieldNameId = setLogicalOperator(fieldName,OP_AND);
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
-    public SOQLQueryBuilder andWithCloseBracket(SObjectField field){
-        return andWithCloseBracket(field.getDescribe().getName());
+    public SOQLQueryBuilder andCloseBracket(SObjectField field){
+        return andCloseBracket(field.getDescribe().getName());
     }
-    public SOQLQueryBuilder andWithCloseBracket(String fieldName){
+    public SOQLQueryBuilder andCloseBracket(String fieldName){
         String fieldNameId = setLogicalOperator(fieldName,OP_AND);
         this.fieldNameCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
         return this;
@@ -310,18 +310,18 @@ public with sharing class SOQLQueryBuilder {
         setLogicalOperator(fieldName,OP_OR);
         return this;
     }
-    public SOQLQueryBuilder orWithOpenBracket(SObjectField field){
-        return orWithOpenBracket(field.getDescribe().getName());
+    public SOQLQueryBuilder orOpenBracket(SObjectField field){
+        return orOpenBracket(field.getDescribe().getName());
     }
-    public SOQLQueryBuilder orWithOpenBracket(String fieldName){
+    public SOQLQueryBuilder orOpenBracket(String fieldName){
         String fieldNameId = setLogicalOperator(fieldName,OP_OR);
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
-    public SOQLQueryBuilder orWithCloseBracket(SObjectField field){
-        return orWithCloseBracket(field.getDescribe().getName());
+    public SOQLQueryBuilder orCloseBracket(SObjectField field){
+        return orCloseBracket(field.getDescribe().getName());
     }
-    public SOQLQueryBuilder orWithCloseBracket(String fieldName){
+    public SOQLQueryBuilder orCloseBracket(String fieldName){
         String fieldNameId = setLogicalOperator(fieldName,OP_OR);
         this.fieldNameCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
         return this;

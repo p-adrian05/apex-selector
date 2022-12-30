@@ -4,14 +4,14 @@ Provides a flexible and dynamic extensible Repository layer for SObjects.
 
 Install: https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YwxYQAS
 
+# Object Repository
+Provides an extensible generic service class for making SObject repository classes using the SOQLBuilder class.
+
 # SOQL Builder
 Provides a lightweight and easy to use Apex class which allows you to perform dynamic SOQL queries:
 - Allows function chaining
 - Supports complex queries including parent/child relationships and nested conditions
 - Supports aggregate functions including group by methods
-
-# Object Repository
-Provides an extensible generic service class for making SObject repository classes using the SOQLBuilder class.
 
 ## Examples
 
@@ -61,7 +61,8 @@ Provides an extensible generic service class for making SObject repository class
 ### Select records with complex conditions
 ```Apex
   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder('Account')
-        .selectSpecificFields(new List<SObjectField>{Account.Name,Account.AccountSource,Account.NumberOfEmployees})
+        .selectSpecificFields(new List<SObjectField>{Account.Name,
+                Account.AccountSource,Account.NumberOfEmployees})
         .whereOpenBracket(Account.Name)
         .likeValue('%'+ACCOUNT_NAME+'%')
         .andCloseBracket(Account.NumberOfEmployees)
@@ -72,9 +73,9 @@ Provides an extensible generic service class for making SObject repository class
         .equals('Web')
         .addLimit(4);
 
-    String expectedQueryString = 'SELECT Name,AccountSource,NumberOfEmployees FROM Account WHERE  ' +
-        '(Name LIKE \'%Test account name%\'  AND  NumberOfEmployees > 20) OR  NumberOfEmployees < 10  ' +
-        'OR  AccountSource = \'Web\'   LIMIT 4';
+    'SELECT Name,AccountSource,NumberOfEmployees FROM Account WHERE  ' +
+    '(Name LIKE \'%Test account name%\'  AND  NumberOfEmployees > 20) OR  NumberOfEmployees < 10  ' +
+    'OR  AccountSource = \'Web\'   LIMIT 4';
 ```
 ### Select records with group by and having statements
 ```Apex
@@ -98,10 +99,10 @@ Provides an extensible generic service class for making SObject repository class
         .orCloseBracket(countFunction.toString())
         .lessOrEquals(10);
 
-    String expectedQueryString = 'SELECT AccountSource,COUNT(Id) FROM Account WHERE ' +
-        'Name LIKE \'%Test account name%\' OR ((NOT Name LIKE\'%builder%\') OR  NumberOfEmployees >= 12) ' +
-        ' GROUP BY AccountSource ' +
-        'HAVING  (COUNT(Id) > 1  OR  COUNT(Id) < 100) AND (COUNT(Id) >= 100  OR  COUNT(Id) <= 10)';
+    'SELECT AccountSource,COUNT(Id) FROM Account WHERE ' +
+    'Name LIKE \'%Test account name%\' OR ((NOT Name LIKE\'%builder%\') OR  NumberOfEmployees >= 12) ' +
+    'GROUP BY AccountSource ' +
+    'HAVING  (COUNT(Id) > 1  OR  COUNT(Id) < 100) AND (COUNT(Id) >= 100  OR  COUNT(Id) <= 10)';
 ```
 
 ### Select records with child records
@@ -115,8 +116,9 @@ Provides an extensible generic service class for making SObject repository class
         .whereClause(Contact.Name)
         .likeValue('%'+ACCOUNT_NAME+'%');
 
-    String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts ),(SELECT SuppliedName FROM Cases ) ' +
-        'FROM Account WHERE Name LIKE \'%Test account name%\'';
+   'SELECT Name,(SELECT Name FROM Contacts ),' +
+            '(SELECT SuppliedName FROM Cases ) ' + 
+   'FROM Account WHERE Name LIKE \'%Test account name%\'';
 ```
 ### Select records with parent fields
 ```Apex
@@ -130,22 +132,23 @@ Provides an extensible generic service class for making SObject repository class
                 .whereClause(Contact.LastName)
                 .likeValue('%'+CONTACT_LAST_NAME+'%');
 
-        String expectedQueryString = 'SELECT LastName,Account.Name,ReportsTo.Name FROM Contact WHERE ' +
-                ' LastName LIKE \'%Contact lastName%\'';
+    'SELECT LastName,Account.Name,ReportsTo.Name FROM Contact ' +
+    'WHERE LastName LIKE \'%Contact lastName%\'';
 ```
 
 ### Select records with order by statements
 ```Apex
       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .selectSpecificFields(new List<SObjectField>{Account.Name,
+                        Account.NumberOfEmployees})
                 .whereClause(Account.NumberOfEmployees)
                 .notInside(discounts)
                 .orderBy(Account.Name).ascending().nullsFirst()
                 .orderBy(Account.NumberOfEmployees).descending().nullsLast();
 
-        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account WHERE ' +
-                'NumberOfEmployees NOT IN (10,40,22,23) ' +
-                'ORDER BY Name ASC NULLS FIRST, NumberOfEmployees DESC NULLS LAST';
+      'SELECT Name,NumberOfEmployees FROM Account WHERE ' +
+      'NumberOfEmployees NOT IN (10,40,22,23) ' +
+      'ORDER BY Name ASC NULLS FIRST, NumberOfEmployees DESC NULLS LAST';
 ```
 ### Select records with nested functions
 
@@ -162,19 +165,19 @@ Provides an extensible generic service class for making SObject repository class
                 .addFunction(sumAmountFunction)
                 .groupBy(hourInDayFunction);
 
-        String expectedQueryString = 'SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)),SUM(Amount) FROM Opportunity ' +
-                'GROUP BY HOUR_IN_DAY(convertTimezone(CreatedDate))';
+   'SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)),SUM(Amount) FROM Opportunity ' +
+   'GROUP BY HOUR_IN_DAY(convertTimezone(CreatedDate))';
 ```
 ### Select records using alias
 ```Apex
    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource,Lead.Rating})
-                .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.GROUPING,Lead.LeadSource).setAlias('grpLS'))
-                .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.GROUPING,Lead.Rating).setAlias('grpRating'))
-                .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Lead.Name).setAlias('cnt'))
-                .groupBy(SOQLFunction.of(SOQLFunction.FunctionName.ROLLUP,Lead.LeadSource).addFieldName(Lead.Rating));
+        .selectSpecificFields(new List<SObjectField>{Lead.LeadSource,Lead.Rating})
+        .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.GROUPING,Lead.LeadSource).setAlias('grpLS'))
+        .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.GROUPING,Lead.Rating).setAlias('grpRating'))
+        .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Lead.Name).setAlias('cnt'))
+        .groupBy(SOQLFunction.of(SOQLFunction.FunctionName.ROLLUP,Lead.LeadSource).addFieldName(Lead.Rating));
 
-    String expectedQueryString = 'SELECT LeadSource,Rating,GROUPING(LeadSource) grpLS,GROUPING(Rating) grpRating,' +
-                'COUNT(Name) cnt FROM Lead GROUP BY ROLLUP(LeadSource,Rating)';
+   'SELECT LeadSource,Rating,GROUPING(LeadSource) grpLS,GROUPING(Rating) grpRating,' +
+   'COUNT(Name) cnt FROM Lead GROUP BY ROLLUP(LeadSource,Rating)';
 
 ```

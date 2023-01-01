@@ -31,7 +31,7 @@ public with sharing class ObjectRepositoryTest {
         List<Account> accounts = [SELECT Id FROM Account];
 
         ObjectRepository objectRepository = new ObjectRepository('Account');
-        List<SObject> queriedAccounts = objectRepository.findAllById(getIdsFromSObjects(accounts));
+        Map<Id,SObject> queriedAccounts = objectRepository.findAllById(getIdsFromSObjects(accounts));
 
         System.assert(queriedAccounts.size() == accounts.size());
     }
@@ -40,10 +40,10 @@ public with sharing class ObjectRepositoryTest {
         List<Account> accounts = [SELECT Id FROM Account];
 
         ObjectRepository objectRepository = new ObjectRepository('Account');
-        List<SObject> queriedAccounts = objectRepository.findAllById(getIdsFromSObjects(accounts),new List<SObjectField>{});
+        Map<Id,SObject> queriedAccounts = objectRepository.findAllById(getIdsFromSObjects(accounts),new List<SObjectField>{});
 
         System.assert(queriedAccounts.size() == accounts.size());
-        for(SObject account : queriedAccounts){
+        for(SObject account : queriedAccounts.values()){
             String sObjectExceptionMessage;
             try{
                 Object name = account.get('Name');
@@ -78,10 +78,10 @@ public with sharing class ObjectRepositoryTest {
         Account accountTest = [SELECT Id, Name FROM Account LIMIT 1];
 
         ObjectRepository objectRepository = new ObjectRepository('Account');
-        List<SObject> accounts  = objectRepository.findByName(accountTest.Name,new List<SObjectField>{Account.Name});
+        Map<Id,SObject> accounts  = objectRepository.findByName(accountTest.Name,new List<SObjectField>{Account.Name});
 
         System.assert(accounts.size()==1);
-        Account queriedAccount = (Account) accounts.get(0);
+        Account queriedAccount = (Account) accounts.values().get(0);
         System.assert(queriedAccount.Name == accountTest.Name);
         String sObjectExceptionMessage;
         try{
@@ -96,10 +96,10 @@ public with sharing class ObjectRepositoryTest {
         Account accountTest = [SELECT Id, Name FROM Account LIMIT 1];
 
         ObjectRepository objectRepository = new ObjectRepository('Account');
-        List<SObject> accounts  = objectRepository.findByName(accountTest.Name);
+        Map<Id,SObject> accounts  = objectRepository.findByName(accountTest.Name);
 
         System.assert(accounts.size()==1);
-        Account queriedAccount = (Account) accounts.get(0);
+        Account queriedAccount = (Account) accounts.values().get(0);
         System.assert(queriedAccount.Name == accountTest.Name);
 
     }

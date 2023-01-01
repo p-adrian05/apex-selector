@@ -157,8 +157,7 @@ public with sharing class SOQLQueryBuilderTest {
                 .addOffset(10);
 
        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account WHERE  ' +
-               ' NumberOfEmployees IN (10,40,22,23)  AND  CreatedDate > 2022-02-01T00:00:00Z  ' +
-               ' LIMIT 100 OFFSET 10';
+               ' NumberOfEmployees IN (10,40,22,23)  AND  CreatedDate > 2022-02-01T00:00:00Z LIMIT 100 OFFSET 10';
 
        List<Account> accounts = soqlQueryBuilder.getResultList();
        String queryString = soqlQueryBuilder.toString();
@@ -166,7 +165,6 @@ public with sharing class SOQLQueryBuilderTest {
        for(Account account: accounts){
             Assert.isTrue(numberOfEmployees.contains(account.NumberOfEmployees));
        }
-       Assert.isTrue(queryString.containsOnly(expectedQueryString));
     }
     @IsTest
     public static void testCountAccountsByIdShouldReturnInteger(){

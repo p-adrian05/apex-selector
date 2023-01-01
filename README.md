@@ -2,10 +2,28 @@
 
 Provides a flexible and dynamic extensible Repository layer for SObjects. 
 
-Install: https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YwxYQAS
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YxnPQAS">
+<img alt="Deploy to Salesforce"
+src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
+</a>
 
 # Object Repository
-Provides an extensible generic service class for making SObject repository classes using the SOQLBuilder class.
+Provides a generic service class with basic queries for using itself or 
+creating extended specific SObject repository classes using with the SOQLBuilder class.
+
+```Apex
+ObjectRepository accountRepository = new ObjectRepository(Account.getSObjectType());
+
+Optional accountOptional = accountRepository.findById('0017Q00000KefG7QAJ');
+
+if(accountOptional.isPresent()){
+    Account account =  (Account) accountOptional.get();
+}
+
+Map<Id,SObject> accountMap = accountRepository.findAllById(new List<Id>{'0017Q00000KefG7QAJ'});
+List<Account> accounts = accountMap.values();
+
+```
 
 # SOQL Builder
 Provides a lightweight and easy to use Apex class which allows you to perform dynamic SOQL queries:

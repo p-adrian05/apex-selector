@@ -2,6 +2,8 @@
 
 Provides a flexible and dynamic extensible Repository layer for SObjects. 
 
+A repository layer is a design pattern in software architecture that provides an abstraction between the data access code and the rest of the application. The repository pattern allows for the encapsulation of data access logic. It help to maintain the clean separation of concerns between the business logic and data access logic making the codebase more robust and maintainable.
+
 <a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YxnPQAS">
 <img alt="Deploy to Salesforce"
 src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
@@ -10,6 +12,8 @@ src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png
 # Object Repository
 Provides a generic service class with basic queries for using itself or 
 creating extended specific SObject repository classes using with the SOQLBuilder class.
+
+Having a separate ObjectRepository class for every SObject in Salesforce provides a maintainable and reusable solution for data access logic, improves scalability, performance and testability of the application.
 
 ```Apex
 ObjectRepository accountRepository = new ObjectRepository(Account.getSObjectType());
@@ -26,10 +30,17 @@ List<Account> accounts = accountMap.values();
 ```
 
 # SOQL Builder
-Provides a lightweight and easy to use Apex class which allows you to perform dynamic SOQL queries:
-- Allows function chaining
-- Supports complex queries including parent/child relationships and nested conditions
-- Supports aggregate functions including group by methods
+
+A dynamic SOQL Builder class in Apex is a class that is used to construct SOQL (Salesforce Object Query Language) queries at runtime, allowing for a greater degree of flexibility in querying data from Salesforce.
+
+There are several reasons why it is important to have a dynamic SOQL Builder class in Apex:
+
+- Dynamic querying: A dynamic SOQL Builder class allows for the construction of queries at runtime, which can be useful in situations where the specific query needed is not known until runtime. This is especially useful for situations where a user needs to search for data based on certain criteria, as the specific search criteria are not known until the user inputs them.
+
+- Improved readability and maintainability: A dynamic SOQL Builder class can make the code more readable and maintainable. Because the query is constructed programmatically, it can be more easily understood and modified, rather than having a large, complex string of query text.
+
+- Flexibility and reusability: Dynamic SOQL Builder class allows for greater flexibility and reusability in the code. By encapsulating the logic for building SOQL queries into a single class, it can be reused throughout the application, which can save development time and help ensure consistency in how data is queried.
+
 
 ## Examples
 

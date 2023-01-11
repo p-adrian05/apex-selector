@@ -45,6 +45,10 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 ## Examples
 
 ### Select a record by ID
+The selectStandardFields method is used to retrieve all the standard fields for the Account object. This will include all the fields that come out of the box for an Account object in Salesforce.
+
+The whereClause method is used to add a WHERE clause to the query, with a condition that filters the results to only include records where the "Id" field is equal to the variable 'id'.
+
 ```Apex
   SOQLQueryBuilder accountQuery = new SOQLQueryBuilder(Account.getSObjectType())
         .selectStandardFields()
@@ -88,6 +92,13 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 ```
 
 ### Select records with complex conditions
+The whereOpenBracket method is used to open a bracket for a WHERE clause in the query. The likeValue method is then used to add a condition to the WHERE clause that filters for records where the "Name" field contains the value of the variable ACCOUNT_NAME.
+
+The andCloseBracket method is used to close the bracket, and the greaterThan method is used to add another condition to the WHERE clause that filters for records where the "NumberOfEmployees" field is greater than 20.
+
+Then, orCondition is used twice to add conditions that filter the results with lessThan which filters the "NumberOfEmployees" field is less than 10 and equals that filter the "AccountSource" field is equal to 'Web'
+
+Finally, the addLimit method is used to specify that the query should return a maximum of 4 records.
 ```Apex
   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder('Account')
         .selectSpecificFields(new List<SObjectField>{Account.Name,
@@ -135,6 +146,7 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 ```
 
 ### Select records with child records
+Using addInnerQuery method twice which is used to query child records through a related object creating new SOQLQueryBuilder instances for them. The first time it's used to add a query for the Contact object, and the second time it's used to query the child records of the Account object with the Case object.
 ```Apex
    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
         .selectSpecificFields(new List<SObjectField>{Account.Name})
@@ -150,6 +162,7 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
    'FROM Account WHERE Name LIKE \'%Test account name%\'';
 ```
 ### Select records with parent fields
+Using class also uses addParentQuery method twice which is used to query parent records through a relationship creating new SOQLQueryBuilder instances for them. The first time it's used to add a query for the Account object, and the second time it's used to query the parent records of the Contact object with the ReportsTo relationship.
 ```Apex
     SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Contact.LastName})
@@ -166,6 +179,9 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 ```
 
 ### Select records with order by statements
+The orderBy method is used to sort the records by a certain field. in this example, the query will first sort the records by the "Name" field in ascending order with the nulls first and then by the "NumberOfEmployees" field in descending order with the nulls last.
+
+The methods ascending() and descending() specify the sort direction, while the nullsFirst() and nullsLast() specifies the null values handling.
 ```Apex
       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
                 .selectSpecificFields(new List<SObjectField>{Account.Name,
@@ -180,7 +196,13 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
       'ORDER BY Name ASC NULLS FIRST, NumberOfEmployees DESC NULLS LAST';
 ```
 ### Select records with nested functions
+First, it creates three instances of the SOQLFunction class, representing three different functions-
+The convertTimeZoneFunction will convert the Opportunity's CreatedDate to the user's time zone.
+The hourInDayFunction will return the hour of the day as an integer for the converted time.
+The sumAmountFunction will return the sum of the Amount field for all returned records.
 
+Then, the addFunction method is used to add the function to the query twice, the first one is hourInDayFunction and second is sumAmountFunction.
+Finally, the groupBy method is used to group the query results by the hour of the day (hourInDayFunction) returned by the query.
 ```Apex
    SOQLFunction convertTimeZoneFunction = SOQLFunction.of(SOQLFunction.FunctionName.convertTimezone,
                 Opportunity.CreatedDate);

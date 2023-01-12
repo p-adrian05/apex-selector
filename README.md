@@ -10,8 +10,7 @@ src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png
 </a>
 
 # Object Repository
-Provides a generic service class with basic queries for using itself or 
-creating extended specific SObject repository classes using with the SOQLBuilder class.
+Provides a generic service class with basic queries for creating extended specific SObject repository classes using with the SOQLBuilder class.
 
 Having a separate ObjectRepository class for every SObject in Salesforce provides a maintainable and reusable solution for data access logic, improves scalability, performance and testability of the application.
 

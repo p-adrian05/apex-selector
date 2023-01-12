@@ -118,6 +118,9 @@ Finally, the addLimit method is used to specify that the query should return a m
     'OR  AccountSource = \'Web\'   LIMIT 4';
 ```
 ### Select records with group by and having statements
+First, it creates an instance of the SOQLFunction class, representing COUNT function that can be used in a SOQL query. The countFunction will return the count of the Id field for all returned records.
+The groupBy method is used to group the query results by the AccountSource field.
+The havingOpenBracket method is used to filter the records based on the aggregate function (COUNT) results and open a bracket.
 ```Apex
    SOQLFunction countFunction = SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Account.Id);
    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())

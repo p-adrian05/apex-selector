@@ -17,32 +17,32 @@ public with sharing class ObjectRepositoryTest {
     @IsTest
     public static void testFindByIdShouldReturnAccount(){
         Account account = [SELECT Id FROM Account LIMIT 1];
-
-        ObjectRepository objectRepository = new ObjectRepository('Account');
+        ObjectRepository objectRepository = new ObjectRepositoryImpl('Account');
         Optional accountOptional = objectRepository.findById(account.Id);
 
         Account queriedAccount = (Account) accountOptional.get();
-        System.assert(accountOptional.isPresent());
-        System.assert(!accountOptional.isEmpty());
-        System.assert(account.Id == queriedAccount.Id);
+
+        Assert.isTrue(accountOptional.isPresent());
+        Assert.isFalse(accountOptional.isEmpty());
+        Assert.areEqual(account.Id,queriedAccount.Id);
     }
     @IsTest
     public static void testFindByIdsShouldReturnAccount(){
         List<Account> accounts = [SELECT Id FROM Account];
+        ObjectRepository objectRepository = new ObjectRepositoryImpl('Account');
 
-        ObjectRepository objectRepository = new ObjectRepository('Account');
         Map<Id,SObject> queriedAccounts = objectRepository.findAllById(getIdsFromSObjects(accounts));
 
-        System.assert(queriedAccounts.size() == accounts.size());
+        Assert.areEqual(accounts.size(),queriedAccounts.size());
     }
     @IsTest
     public static void testFindByIdsWithFieldsShouldReturnAccount(){
         List<Account> accounts = [SELECT Id FROM Account];
+        ObjectRepository objectRepository = new ObjectRepositoryImpl('Account');
 
-        ObjectRepository objectRepository = new ObjectRepository('Account');
         Map<Id,SObject> queriedAccounts = objectRepository.findAllById(getIdsFromSObjects(accounts),new List<SObjectField>{});
 
-        System.assert(queriedAccounts.size() == accounts.size());
+        Assert.areEqual(accounts.size(),queriedAccounts.size());
         for(SObject account : queriedAccounts.values()){
             String sObjectExceptionMessage;
             try{
@@ -50,20 +50,21 @@ public with sharing class ObjectRepositoryTest {
             }catch (Exception e){
                 sObjectExceptionMessage = e.getMessage();
             }
-            System.assert(sObjectExceptionMessage!=null);
+            Assert.isNotNull(sObjectExceptionMessage);
         }
     }
     @IsTest
     public static void testFindByIdWithFieldsShouldReturnAccount(){
         Account account = [SELECT Id,Name FROM Account LIMIT 1];
 
-        ObjectRepository objectRepository = new ObjectRepository('Account');
+        ObjectRepository objectRepository = new ObjectRepositoryImpl('Account');
         Optional accountOptional = objectRepository.findById(account.Id,new List<SObjectField>{});
 
         Account queriedAccount = (Account) accountOptional.get();
-        System.assert(accountOptional.isPresent());
-        System.assert(!accountOptional.isEmpty());
-        System.assert(account.Id ==queriedAccount.Id);
+
+        Assert.isTrue(accountOptional.isPresent());
+        Assert.isFalse(accountOptional.isEmpty());
+        Assert.areEqual(account.Id,queriedAccount.Id);
 
         String sObjectExceptionMessage;
         try{
@@ -71,36 +72,37 @@ public with sharing class ObjectRepositoryTest {
         }catch (Exception e){
             sObjectExceptionMessage = e.getMessage();
         }
-        System.assert(sObjectExceptionMessage!=null);
+        Assert.isNotNull(sObjectExceptionMessage);
     }
     @IsTest
     public static void testFindByNameWithFieldsShouldReturnAccount() {
         Account accountTest = [SELECT Id, Name FROM Account LIMIT 1];
+        ObjectRepository objectRepository = new ObjectRepositoryImpl('Account');
 
-        ObjectRepository objectRepository = new ObjectRepository('Account');
         Map<Id,SObject> accounts  = objectRepository.findByName(accountTest.Name,new List<SObjectField>{Account.Name});
 
-        System.assert(accounts.size()==1);
+        Assert.areEqual(1,accounts.size());
         Account queriedAccount = (Account) accounts.values().get(0);
-        System.assert(queriedAccount.Name == accountTest.Name);
+        Assert.areEqual(accountTest.Name,queriedAccount.Name);
+
         String sObjectExceptionMessage;
         try{
             Datetime d = queriedAccount.CreatedDate;
         }catch (Exception e){
             sObjectExceptionMessage = e.getMessage();
         }
-        System.assert(sObjectExceptionMessage!=null);
+        Assert.isNotNull(sObjectExceptionMessage);
     }
     @IsTest
     public static void testFindByNameShouldReturnAccount() {
         Account accountTest = [SELECT Id, Name FROM Account LIMIT 1];
+        ObjectRepository objectRepository = new ObjectRepositoryImpl('Account');
 
-        ObjectRepository objectRepository = new ObjectRepository('Account');
         Map<Id,SObject> accounts  = objectRepository.findByName(accountTest.Name);
 
-        System.assert(accounts.size()==1);
+        Assert.areEqual(1,accounts.size());
         Account queriedAccount = (Account) accounts.values().get(0);
-        System.assert(queriedAccount.Name == accountTest.Name);
+        Assert.areEqual(accountTest.Name,queriedAccount.Name);
 
     }
     private static List<Id> getIdsFromSObjects(List<SObject> sObjects){

@@ -12,15 +12,17 @@ Provides a generic service class with basic queries for using itself or
 creating extended specific SObject repository classes using with the SOQLBuilder class.
 
 ```Apex
-ObjectRepository accountRepository = new ObjectRepository(Account.getSObjectType());
+ObjectRepositoryImpl accountRepository = new ObjectRepositoryImpl(Account.getSObjectType());
 
 Optional accountOptional = accountRepository.findById('0017Q00000KefG7QAJ');
 
-if(accountOptional.isPresent()){
-    Account account =  (Account) accountOptional.get();
+if (accountOptional.isPresent()) {
+    Account account = (Account) accountOptional.get();
 }
 
-Map<Id,SObject> accountMap = accountRepository.findAllById(new List<Id>{'0017Q00000KefG7QAJ'});
+Map<Id, SObject> accountMap = accountRepository.findAllById(new List<Id>{
+        '0017Q00000KefG7QAJ'
+});
 List<Account> accounts = accountMap.values();
 
 ```
@@ -139,6 +141,7 @@ Provides a lightweight and easy to use Apex class which allows you to perform dy
    'FROM Account WHERE Name LIKE \'%Test account name%\'';
 ```
 ### Select records with parent fields
+
 ```Apex
     SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Contact.LastName})

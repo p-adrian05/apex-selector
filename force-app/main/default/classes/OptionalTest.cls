@@ -6,10 +6,10 @@ public with sharing class OptionalTest {
         String value = 'val';
         Optional optional = Optional.of(value);
 
-        System.assert(!optional.isEmpty());
-        System.assert(optional.isPresent());
-        System.assert(optional.get()==value);
-        System.assert(optional.toString().contains(value));
+        Assert.isFalse(optional.isEmpty());
+        Assert.isTrue(optional.isPresent());
+        Assert.areEqual(value,optional.get());
+        Assert.isTrue(optional.toString().contains(value));
     }
     @IsTest
     public static void testOptionalOfNullableShouldReturnOptionalInstance(){
@@ -18,13 +18,13 @@ public with sharing class OptionalTest {
         String nullValue;
         Optional optionalOfNull = Optional.ofNullable(nullValue);
 
-        System.assert(optionalOfNullable.isPresent());
-        System.assert(!optionalOfNullable.isEmpty());
-        System.assert(optionalOfNullable.get()==value);
+        Assert.isTrue(optionalOfNullable.isPresent());
+        Assert.isFalse(optionalOfNullable.isEmpty());
+        Assert.areEqual(value,optionalOfNullable.get());
 
-        System.assert(optionalOfNull.isEmpty());
-        System.assert(!optionalOfNull.isPresent());
-        System.assert(optionalOfNull.toString().containsIgnoreCase('empty'));
+        Assert.isTrue(optionalOfNull.isEmpty());
+        Assert.isFalse(optionalOfNull.isPresent());
+        Assert.isTrue(optionalOfNull.toString().containsIgnoreCase('empty'));
 
         String exceptionMessage;
         try{
@@ -32,6 +32,6 @@ public with sharing class OptionalTest {
         }catch (Exception e){
             exceptionMessage = e.getMessage();
         }
-        System.assert(exceptionMessage!=null);
+        Assert.isNotNull(exceptionMessage);
     }
 }

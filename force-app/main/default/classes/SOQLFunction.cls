@@ -1,3 +1,7 @@
+/**
+    SOQLFunction is a class that helps you to build SOQL functions like COUNT, SUM, AVG, MIN, MAX, etc.
+    Supports inner functions like COUNT(COUNT(Id)) and aliases like COUNT(Id) AS Total
+ */
 public with sharing class SOQLFunction {
 
     private FunctionName name;

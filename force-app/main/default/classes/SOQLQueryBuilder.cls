@@ -1,3 +1,9 @@
+
+/**
+ *  SOQLQueryBuilder is a utility class to build SOQL queries in dynamic way.
+ *
+*/
+
 public with sharing class SOQLQueryBuilder {
 
     private final static String OP_AND = 'AND';
@@ -69,21 +75,22 @@ public with sharing class SOQLQueryBuilder {
     private Boolean updateViewStat = false;
     private Boolean allRows = false;
 
-
     private Boolean isWhereStatement = true;
     private String lastWhereFieldName;
     private String lastOrderByFieldName;
     private Integer whereFieldNameCounter = 0;
 
     public SOQLQueryBuilder(SObjectType sObjectType){
+        requireNonNull(sObjectType, 'SObject type cannot be null!');
         init(sObjectType.getDescribe().getName());
     }
     public SOQLQueryBuilder(String sObjectTypeName){
+        requireNonNull(sObjectTypeName, 'SObject type cannot be null!');
         try{
-            SObjectType parentsObjType = ((SObject) Type.forName(sObjectTypeName).newInstance())
+            ((SObject) Type.forName(sObjectTypeName).newInstance())
                     .getSObjectType();
         }catch (Exception e){
-            throw new SObjectException('Invalid sobjectType: '+ sObjectTypeName);
+            throw new SObjectException('Invalid SObject type: ' + sObjectTypeName);
         }
         init(sObjectTypeName);
     }
@@ -101,35 +108,117 @@ public with sharing class SOQLQueryBuilder {
         this.innerQueries = new List<SOQLQueryBuilder>();
         this.parentQueries = new List<SOQLQueryBuilder>();
     }
+    /**
+        * Adds an inner query to the SOQL query to select related records.
+        * @example
+        * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+              .selectSpecificFields(new List<SObjectField>{Account.Name})
+                .addInnerQuery(new SOQLQueryBuilder(Contact.getSObjectType())
+                        .selectSpecificFields(new List<SObjectField>{Contact.Name}));
+
+        String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts ) FROM Account';
+        *
+        * @param databaseQuery the inner query to be added.
+        * @return SOQLQueryBuilder the current instance of the builder.
+    */
     public SOQLQueryBuilder addInnerQuery(SOQLQueryBuilder databaseQuery){
+        requireNonNull(databaseQuery, 'Inner query cannot be null!');
         this.innerQueries.add(databaseQuery);
         return this;
     }
+    /**
+      * Adds a parent query to the SOQL query builder to select related parent fields.
+      * @example
+      *   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
+              .selectSpecificFields(new List<SObjectField>{Contact.LastName})
+                .addParentQuery(new SOQLQueryBuilder(Account.getSObjectType())
+                   .selectSpecificFields(new List<SObjectField>{Account.Name}));
+
+        String expectedQueryString = 'SELECT LastName,Account.Name FROM Contact;
+
+      * @param parentQuery the parent query to be added.
+      * @return SOQLQueryBuilder the current instance of the builder.
+   */
     public SOQLQueryBuilder addParentQuery(SOQLQueryBuilder parentQuery){
+        requireNonNull(parentQuery, 'Parent query cannot be null');
         this.parentQueries.add(parentQuery);
         return this;
     }
+
+    /**
+    * Sets the parent SObject type name to be used in the SOQL query when adding a parent query and the
+     * relationsShip name is not the same as the parent SObject type name.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
+              .selectSpecificFields(new List<SObjectField>{Contact.LastName})
+                 .addParentQuery(new SOQLQueryBuilder(Contact.getSObjectType())
+                         .selectSpecificFields(new List<SObjectField>{Contact.Name})
+                         .setParentSObjectTypeName('ReportsTo'));
+
+        String expectedQueryString = 'SELECT LastName,ReportsTo.Name FROM Contact;
+    *
+    * @param parentSObjectTypeName the parent SObject type name to be set.
+    * @return SOQLQueryBuilder the current instance of the builder.
+    */
     public SOQLQueryBuilder setParentSObjectTypeName(String parentSObjectTypeName){
+        requireNonNull(parentSObjectTypeName, 'Parent SObject type name cannot be null!');
         this.parentSObjectTypeName = parentSObjectTypeName;
         return this;
     }
+    /**
+    * Adds a SOQL function to the query builder.
+    * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.COUNT));
+
+       String expectedQueryString = 'SELECT COUNT() FROM Account';
+     *
+    * @param soqlFunction the SOQL Function to be added.
+    * @return SOQLQueryBuilder the current instance of the builder.
+ */
     public SOQLQueryBuilder addFunction(SOQLFunction soqlFunction){
+        requireNonNull(soqlFunction, 'SOQL Function cannot be null!');
         this.fields.add(soqlFunction.toString());
         return this;
     }
+    /**
+    * Selects all custom fields for the SObject type in the query builder.
+    *
+    * @param includeLargeText whether to include fields with character length greater than 255.
+    * @return SOQLQueryBuilder the current instance of the builder.
+   */
     public SOQLQueryBuilder selectCustomFields(Boolean includeLargeText){
+        requireNonNull(includeLargeText, 'Include large text cannot be null!');
         this.fields.addAll(getCustomFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
         this.fields.add(DEFAULT_FIELD);
         return this;
     }
+    /**
+    * Selects all fields for the SObject type in the query builder.
+    *
+    * @param includeLargeText whether to include fields with character length greater than 255.
+    * @return SOQLQueryBuilder the current instance of the builder.
+    */
     public SOQLQueryBuilder selectAllFields(Boolean includeLargeText){
+        requireNonNull(includeLargeText, 'Include large text cannot be null!');
         this.fields.addAll(getAllFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
         return this;
     }
+    /**
+    * Selects all standard fields for the SObject type in the query builder.
+    *
+    * @return SOQLQueryBuilder the current instance of the builder.
+    */
     public SOQLQueryBuilder selectStandardFields(){
         this.fields.addAll(getStandardFieldNamesForSObjectType(this.sObjectTypeName));
         return this;
     }
+    /**
+    * Selects specific fields for the SObject type in the query builder.
+    *
+    * @param fields the list of SObjectFields to be selected.
+    * @return SOQLQueryBuilder the current instance of the builder.
+    */
     public SOQLQueryBuilder selectSpecificFields(List<SObjectField> fields){
         List<String> fieldsString = new List<String>();
         if(fields!=null){
@@ -139,45 +228,145 @@ public with sharing class SOQLQueryBuilder {
         }
         return selectSpecificFields(fieldsString);
     }
+    /**
+    * Selects specific fields for the SObject type in the query builder.
+    *
+    * @param fields the list of field names to be selected.
+    * @return SOQLQueryBuilder the current instance of the builder.
+    */
     public SOQLQueryBuilder selectSpecificFields(List<String> fields){
         if(fields!=null){
             this.fields.addAll(fields);
         }
         return this;
     }
+    /**
+     * Adds LIMIT keyword to the SOQL query.
+     *
+     * @example
+     *    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .addLimit(100);
+
+       String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account LIMIT 100';
+     *
+     * @param limitNumber the number of records to limit the query to
+     * @return The SOQLQueryBuilder instance with a LIMIT number set
+ */
     public SOQLQueryBuilder addLimit(Integer limitNumber){
+        requireNonNull(limitNumber, 'Limit number cannot be null!');
         this.limitNumber = limitNumber;
         return this;
     }
+    /**
+     * Adds OFFSET keyword to the SOQL query.
+     * @example
+     *       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .addOffset(10);
+
+       String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account OFFSET 10';
+
+     * @param offsetNumber the number of records to offset the query by
+     * @return The SOQLQueryBuilder instance with an OFFSET number set
+    */
     public SOQLQueryBuilder addOffset(Integer offsetNumber){
+        requireNonNull(offsetNumber, 'Offset number cannot be null!');
         this.offsetNumber = offsetNumber;
         return this;
     }
+    /**
+     * Adds FOR UPDATE keyword to the SOQL query.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).forUpdate();
+     *  String expectedQueryString = 'SELECT Id FROM Account FOR UPDATE';
+     *
+     * @return The SOQLQueryBuilder instance with FOR UPDATE keyword added
+    */
     public SOQLQueryBuilder forUpdate(){
         this.forUpdate = true;
         return this;
     }
+    /**
+     * Adds FOR VIEW keyword to the SOQL query.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).forView();
+     *
+        String expectedQueryString = 'SELECT Id FROM Account FOR VIEW';
+
+     * @return The SOQLQueryBuilder instance with FOR VIEW keyword added
+    */
     public SOQLQueryBuilder forView(){
         this.forView = true;
         return this;
     }
+    /**
+     * Adds FOR REFERENCE keyword to the SOQL query.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).forReference();
+     *
+       String expectedQueryString = 'SELECT Id FROM Account FOR REFERENCE';
+     *
+     *
+     * @return The SOQLQueryBuilder instance with FOR REFERENCE keyword added
+    */
     public SOQLQueryBuilder forReference(){
         this.forReference = true;
         return this;
     }
+    /**
+     * Adds UPDATE VIEW STAT keyword to the SOQL query.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).updateViewStat();
+
+        String expectedQueryString = 'SELECT Id FROM Account UPDATE VIEWSTAT';
+     *
+     * @return The SOQLQueryBuilder instance with UPDATE VIEW STAT keyword added
+    */
     public SOQLQueryBuilder updateViewStat(){
         this.updateViewStat = true;
         return this;
     }
+    /**
+     * Adds UPDATE TRACKING keyword to the SOQL query.
+     *
+     * @example
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).updateTracking();
+        String expectedQueryString = 'SELECT Id FROM Account UPDATE TRACKING';
+
+     * @return The SOQLQueryBuilder instance with UPDATE TRACKING keyword  added
+    */
     public SOQLQueryBuilder updateTracking(){
         this.updateTracking = true;
         return this;
     }
+    /**
+     * Adds ALL ROWS keyword to the SOQL query.
+     *
+     * @example
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).allRows();
+        String expectedQueryString = 'SELECT Id FROM Account ALL ROWS';
+     *
+     * @return The SOQLQueryBuilder instance with ALL ROWS keyword added
+ */
     public SOQLQueryBuilder allRows(){
         this.allRows = true;
         return this;
     }
+    /**
+     * Adds WITH statement to the SOQL query.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder =  new SOQLQueryBuilder(Account.getSObjectType())
+                .with('DATA CATEGORY Geography__c');
+        String expectedQueryString = 'SELECT Id FROM Account WITH DATA CATEGORY Geography__c';
+     *
+     * @param withStatement the WITH statement to add to the query
+     * @return The SOQLQueryBuilder instance with the WITH statement added
+    */
     public SOQLQueryBuilder with(String withStatement){
+        requireNonNull(withStatement, 'With statement cannot be null!');
         if(this.withStatement == null){
             this.withStatement = withStatement;
         }else{
@@ -185,6 +374,17 @@ public with sharing class SOQLQueryBuilder {
         }
         return this;
     }
+    /**
+     * Adds SECURITY_ENFORCED keyword to the SOQL query.
+     *
+     * @example
+     *   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .withSecurityEnforced();
+
+        String expectedQueryString = 'SELECT Id FROM Account WITH SECURITY_ENFORCED';
+     *
+     * @return The SOQLQueryBuilder instance with SECURITY_ENFORCED keyword added
+    */
     public SOQLQueryBuilder withSecurityEnforced(){
         if(this.withStatement == null){
             this.withStatement = SECURITY_ENFORCED_STR;
@@ -193,217 +393,978 @@ public with sharing class SOQLQueryBuilder {
         }
         return this;
     }
+    /**
+     * Sets the USING SCOPE keyword with specified FilterScope to use for the SOQL query.
+     *
+     * @example
+     *   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .usingScope(FilterScope.mine);
+
+        String expectedQueryString = 'SELECT Id FROM Account USING SCOPE mine';
+     *
+     * @param filterScope the filter scope to use
+     * @return the SOQL query builder with the USING SCOPE statement
+   */
     public SOQLQueryBuilder usingScope(FilterScope filterScope){
+        requireNonNull(filterScope, 'Filter scope cannot be null!');
         this.usingScopeStatement = filterScope.name();
         return this;
     }
+    /**
+     * Sets the SObjectField field to group by in the SOQL query.
+     * @example
+     *       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.City,Lead.CreatedDate})
+                .groupBy(Lead.City);
+
+        String expectedQueryString = 'SELECT City,CreatedDate FROM Lead
+                'GROUP BY City;
+     *
+     * @param field the SObjectField field to group by
+     * @return the SOQL query builder with the group by statement
+    */
     public SOQLQueryBuilder groupBy(SObjectField field){
+        requireNonNull(field, 'Field cannot be null!');
         return groupBy(field.getDescribe().getName());
     }
+    /**
+     * Sets the String field to group by in the SOQL query.
+     * @example
+     *      SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+            .selectSpecificFields(new List<SObjectField>{Lead.City,Lead.CreatedDate})
+            .groupBy('City');
+
+        String expectedQueryString = 'SELECT City,CreatedDate FROM Lead
+                'GROUP BY City;
+     *
+     * @param fieldName the String name of the field to group by
+     * @return the SOQL query builder with  group by statement
+    */
     public SOQLQueryBuilder groupBy(String fieldName){
+        requireNonNull(fieldName, 'Field name cannot be null!');
         this.groupByFields.add(fieldName);
         return this;
     }
+
+    /**
+     * Sets the SOQL function to group by in the SOQL query.
+     * @example
+     *   SOQLFunction hourInDayFunction = SOQLFunction.of(SOQLFunction.FunctionName.HOUR_IN_DAY,
+                convertTimeZoneFunction);
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Opportunity.getSObjectType())
+                .addFunction(hourInDayFunction)
+                .groupBy(hourInDayFunction);
+
+        String expectedQueryString = 'SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)) FROM Opportunity ' +
+                'GROUP BY HOUR_IN_DAY(convertTimezone(CreatedDate))';
+     *
+     * @param soqlFunction the SOQL function to group by
+     * @return the SOQL query builder instance with group by statement
+     */
     public SOQLQueryBuilder groupBy(SOQLFunction soqlFunction){
+        requireNonNull(soqlFunction, 'SOQL function cannot be null in GROUP BY statement!');
         this.groupByFields.add(soqlFunction.toString());
         return this;
     }
+    /**
+     * Sets the SObjectField field to order by in the SOQL query in default ascending order.
+     * @example
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .orderBy(Account.NumberOfEmployees);
+
+        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account
+                'ORDER BY Name ASC';
+
+     * @param field the field to order by
+     * @return the SOQL query builder with the order by statement
+ */
     public SOQLQueryBuilder orderBy(SObjectField field){
+        requireNonNull(field, 'Order By Field cannot be null!');
         return orderBy(field.getDescribe().getName());
     }
+    /**
+      * Sets the String field to order by in the SOQL query in default ascending order.
+      *  @example
+      *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .orderBy('NumberOfEmployees');
+
+        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account
+                'ORDER BY Name ASC';
+
+     * @param fieldName the API name of the field to order by
+     * @return the SOQL query builder with the order by statement
+     */
     public SOQLQueryBuilder orderBy(String fieldName){
+        requireNonNull(fieldName, 'Order By Field name cannot be null!');
         this.orderByFieldNameOrderMap.put(fieldName,ASC_STR);
         this.lastOrderByFieldName = fieldName;
         return this;
     }
+    /**
+     * Sets the order of order by statement in the SOQL query to ascending order.
+     * @example
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .orderBy(Account.Name).ascending();
+
+        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account
+                'ORDER BY Name ASC';
+
+     *
+     * @return the SOQL query builder with the order by statement with ascending order
+   */
     public SOQLQueryBuilder ascending(){
         this.orderByFieldNameOrderMap.put(this.lastOrderByFieldName,ASC_STR);
         return this;
     }
+    /**
+   * Sets the order of order by statement in the SOQL query to descending order.
+   * @example
+   *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+              .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+              .orderBy(Account.Name).descending();
+
+      String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account
+              'ORDER BY Name DESC';
+
+   * @return the SOQL query builder with the order by statement with descending order
+ */
     public SOQLQueryBuilder descending(){
         this.orderByFieldNameOrderMap.put(this.lastOrderByFieldName,DESC_STR);
         return this;
     }
+    /**
+   * Sets NULLS LAST keyword after the order by statement in the SOQL query..
+   *@example
+   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .orderBy(Account.Name).ascending().nullsLast()
+
+        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account
+                'ORDER BY Name ASC NULLS LAST'
+
+   * @return the SOQL query builder the order by statement with NULLS LAST keyword
+  */
     public SOQLQueryBuilder nullsLast(){
         this.orderByFieldNameNullsFirstLastMap.put(this.lastOrderByFieldName,NULLS_LAST_STR);
         return this;
     }
+    /**
+    * Sets NULLS FIRST keyword after the order by statement in the SOQL query..
+    *
+     * @example
+    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .orderBy(Account.Name).ascending().nullsFirst()
+
+        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account
+                'ORDER BY Name ASC NULLS FIRST'
+
+    * @return the SOQL query builder the order by statement with NULLS FIRST keyword
+*/
     public SOQLQueryBuilder nullsFirst(){
         this.orderByFieldNameNullsFirstLastMap.put(this.lastOrderByFieldName,NULLS_FIRST_STR);
         return this;
     }
+    /**
+     * Sets the WHERE clause in the SOQL query based on the provided string SOQL where statement.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name})
+                .whereStatement('Name Like \'%Test account name%\'');
+
+        String expectedQueryString = 'SELECT Name FROM Account  WHERE Name Like \'%Test account name%\'';
+     *
+     * @param whereStatement the string WHERE statement for the SOQL query
+     * @return the SOQLQueryBuilder object with the WHERE statement provided
+ */
     public SOQLQueryBuilder whereStatement(String whereStatement){
+        requireNonNull(whereStatement, 'WHERE statement cannot be null!');
         this.strWhereStatement = whereStatement;
         return this;
     }
+    /**
+     * Sets the WHERE clause in the SOQL query based on the provided SObjectField field.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name})
+                .whereClause(Account.Name)
+                .likeValue('%Test account name%');
+
+       String expectedQueryString = 'SELECT Name FROM Account WHERE Name Like \'%Test account name%\'';
+     *
+     * @param field the SObjectField to use for the WHERE clause
+     * @return the SOQLQueryBuilder object with the WHERE clause based on the provided SObjectField
+    */
     public SOQLQueryBuilder whereClause(SObjectField field){
+        requireNonNull(field, 'WHERE clause field cannot be null!');
         return whereClause(field.getDescribe().getName());
     }
+    /**
+     * Sets the WHERE clause in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name})
+                .whereClause('Name')
+                .likeValue('%Test account name%');
+
+       String expectedQueryString = 'SELECT Name FROM Account WHERE Name Like \'%Test account name%\'';
+     *
+     * @param fieldName the String field api name to use for the WHERE clause
+     * @return the SOQLQueryBuilder object with the WHERE clause based on the provided field api name
+    */
     public SOQLQueryBuilder whereClause(String fieldName){
+        requireNonNull(fieldName, 'WHERE clause field name cannot be null!');
         this.isWhereStatement = true;
         setLogicalOperator(fieldName,'');
         return this;
     }
+    /**
+     * Adds an opening bracket to the WHERE clause of the SOQL query based on the provided SObjectField.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder('Account')
+                .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+                .whereOpenBracket(Account.Name)
+                .likeValue('%Test account name%')
+                .andCloseBracket(Account.NumberOfEmployees)
+                .greaterThan(20);
+
+        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account WHERE  ' +
+                '(Name LIKE \'%Test account name%\'  AND  NumberOfEmployees > 20);
+     *
+     * @param field the SObjectField field to use for the opening bracket
+     * @return the SOQLQueryBuilder object with the opening bracket added to the WHERE clause
+     */
     public SOQLQueryBuilder whereOpenBracket(SObjectField field){
+        requireNonNull(field, 'WHERE clause field cannot be null!');
         return whereOpenBracket(field.getDescribe().getName());
     }
+    /**
+   * Adds an opening bracket to the WHERE clause of the SOQL query based on the provided String field api name.
+   * @example
+   * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder('Account')
+              .selectSpecificFields(new List<SObjectField>{Account.Name,Account.NumberOfEmployees})
+              .whereOpenBracket('Name')
+              .likeValue('%Test account name%\')
+              .andCloseBracket(Account.NumberOfEmployees)
+              .greaterThan(20);
+
+      String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account WHERE  ' +
+              '(Name LIKE \'%Test account name%\'  AND  NumberOfEmployees > 20);
+   *
+   * @param fieldName the String field api name to use for the opening bracket
+   * @return the SOQLQueryBuilder object with the opening bracket added to the WHERE clause
+   */
     public SOQLQueryBuilder whereOpenBracket(String fieldName){
+        requireNonNull(fieldName, 'WHERE clause field name cannot be null!');
         this.isWhereStatement = true;
         String fieldNameId = setLogicalOperator(fieldName,'');
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
+    /**
+     * Sets the HAVING clause statement in the SOQL query based on the provided String field api name.
+     * @example
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.City,Lead.CreatedDate})
+                .whereClause(Lead.CreatedDate)
+                .inside(new List<Date>{Date.newInstance(2022,02,01)})
+                .groupBy(Lead.City)
+                .havingClause('City')
+                .likeValue('%San');
+
+        String expectedQueryString = 'SELECT City,CreatedDate FROM Lead WHERE' +
+                ' CreatedDate IN (2022-02-01T00:00:00Z)  ' +
+                'GROUP BY City HAVING City LIKE \'%San\'';
+     *
+     *
+     * @param fieldName the string field api name to use for the HAVING clause statement
+     * @return the SOQLQueryBuilder object with the HAVING clause statement based on the provided field api name
+     */
     public SOQLQueryBuilder havingClause(String fieldName){
+        requireNonNull(fieldName, 'HAVING clause field name cannot be null!');
         this.isWhereStatement = false;
         setLogicalOperator(fieldName,'');
         return this;
     }
+    /**
+        * Sets the HAVING clause statement in the SOQL query based on the provided SObjectField.
+       * @example
+       *  *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                    .selectSpecificFields(new List<SObjectField>{Lead.City,Lead.CreatedDate})
+                    .whereClause(Lead.CreatedDate)
+                    .inside(new List<Date>{Date.newInstance(2022,02,01)})
+                    .groupBy(Lead.City)
+                    .havingClause(Lead.City)
+                    .likeValue('%San');
+
+            String expectedQueryString = 'SELECT City,CreatedDate FROM Lead WHERE' +
+                    ' CreatedDate IN (2022-02-01T00:00:00Z)  ' +
+                    'GROUP BY City HAVING City LIKE \'%San\'';
+
+       * @param field the SObjectField to use for the HAVING clause statement
+       * @return the SOQLQueryBuilder object with the HAVING clause statement based on the provided SObjectField
+   */
     public SOQLQueryBuilder havingClause(SObjectField field){
+        requireNonNull(field, 'HAVING clause field cannot be null!');
         havingClause(field.getDescribe().getName());
         return this;
     }
+    /**
+     * Sets the HAVING clause statement in the SOQL query based on the provided SOQLFunction.
+     * @example
+     * SOQLFunction countFunction = SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Lead.Name);
+        SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .addFunction(countFunction)
+                .groupBy(Lead.LeadSource)
+                .havingClause(countFunction)
+                .greaterThan(23);
+
+        String expectedQueryString = 'SELECT LeadSource,COUNT(Name) FROM Lead GROUP BY LeadSource HAVING COUNT(Name) > 23';
+     *
+     * @param function the SOQLFunction to use for the HAVING clause statement
+     * @return the SOQLQueryBuilder object with the HAVING clause statement based on the provided SOQLFunction
+    */
     public SOQLQueryBuilder havingClause(SOQLFunction function){
+        requireNonNull(function, 'HAVING clause function cannot be null!');
         havingClause(function.toString());
         return this;
     }
+    /**
+     * Adds an opening bracket to the HAVING clause statement of the SOQL query based on the provided String field api name.
+     * @example
+     * SOQLFunction countFunction = SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Lead.Name);
+        SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .addFunction(countFunction)
+                .groupBy(Lead.LeadSource)
+                .havingOpenBracket('LeadSource')
+                .likeValue('%San')
+                .andCloseBracket(countFunction)
+                .greaterThan(23);
+
+        String expectedQueryString = 'SELECT LeadSource,COUNT(Name)
+                FROM Lead GROUP BY LeadSource HAVING (LeadSource LIKE \'%San\'  AND  COUNT(Name) > 23)';
+
+     * @param fieldName the name of the field to use for the opening bracket in the HAVING clause statement
+     * @return the SOQLQueryBuilder object with the opening bracket added to the HAVING clause statement
+   */
     public SOQLQueryBuilder havingOpenBracket(String fieldName){
+        requireNonNull(fieldName, 'HAVING clause field name cannot be null!');
         this.isWhereStatement = false;
         String fieldNameId = setLogicalOperator(fieldName,'');
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
+    /**
+     * Adds an opening bracket to the HAVING clause statement of the SOQL query based on the provided SObjectField.
+     * @example
+     * SOQLFunction countFunction = SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Lead.Name);
+        SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .addFunction(countFunction)
+                .groupBy(Lead.LeadSource)
+                .havingOpenBracket(Lead.LeadSource)
+                .likeValue('%San')
+                .andCloseBracket(countFunction)
+                .greaterThan(23);
+
+        String expectedQueryString = 'SELECT LeadSource,COUNT(Name)
+                FROM Lead GROUP BY LeadSource HAVING (LeadSource LIKE \'%San\'  AND  COUNT(Name) > 23)';
+     *
+     * @param field the SObjectField to use for the opening bracket in the HAVING clause statement
+     * @return the SOQLQueryBuilder object the opening bracket added to the HAVING clause statement
+ */
     public SOQLQueryBuilder havingOpenBracket(SObjectField field){
+        requireNonNull(field, 'HAVING clause field cannot be null!');
         havingOpenBracket(field.getDescribe().getName());
         return this;
     }
+    /**
+     * Adds an opening bracket to the HAVING clause statement of the SOQL query based on the provided SOQLFunction.
+     *
+     * @example
+     *  SOQLFunction countFunction = SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Lead.Name);
+        SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .addFunction(countFunction)
+                .groupBy(Lead.LeadSource)
+                .havingOpenBracket(countFunction)
+                .greaterThan(23)
+                .andCloseBracket(Lead.LeadSource)
+                .likeValue('%San');
+
+        String expectedQueryString = 'SELECT LeadSource,COUNT(Name)
+                FROM Lead GROUP BY LeadSource HAVING (COUNT(Name) > 23  AND  LeadSource LIKE \'%San\')';
+
+     * @param function the SOQLFunction to use for the opening bracket in the HAVING clause statement
+     * @return the SOQLQueryBuilder object the opening bracket added to the HAVING clause statement
+     */
     public SOQLQueryBuilder havingOpenBracket(SOQLFunction function){
+        requireNonNull(function, 'HAVING clause function cannot be null!');
         havingOpenBracket(function.toString());
         return this;
     }
+    /**
+     * Sets the AND condition in the SOQL query based on the provided SObjectField.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .andCondition(Lead.City)
+                .likeValue('%San');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        AND  City LIKE \'%San\'';
+     *
+     * @param field the SObjectField to use for the AND condition
+     * @return the SOQLQueryBuilder object with the AND condition based on the provided SObjectField
+ */
     public SOQLQueryBuilder andCondition(SObjectField field){
+        requireNonNull(field, 'AND condition field cannot be null!');
         return andCondition(field.getDescribe().getName());
     }
+    /**
+     * Sets the AND condition in the SOQL query based on the provided String field api name.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .andCondition('City')
+                .likeValue('%San');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        AND  City LIKE \'%San\'';
+     *
+     * @param fieldName the name of the field to use for the AND condition
+     * @return the SOQLQueryBuilder object with the AND condition based on the provided String field api name
+    */
     public SOQLQueryBuilder andCondition(String fieldName){
+        requireNonNull(fieldName, 'AND condition field name cannot be null!');
         setLogicalOperator(fieldName,OP_AND);
         return this;
     }
+    /**
+     * Add an opening bracket to the AND condition in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .andOpenBracket(Lead.City)
+                .likeValue('%San')
+                .orCondition(Lead.State)
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        AND  (City LIKE \'%San\'  OR  State LIKE \'%CA\')';
+     *
+     * @param field the SObjectField to use for the opening bracket in the AND condition
+     * @return the current instance of SOQLQueryBuilder with the opening bracket added to the AND condition
+     */
     public SOQLQueryBuilder andOpenBracket(SObjectField field){
+        requireNonNull(field, 'AND condition field cannot be null!');
         return andOpenBracket(field.getDescribe().getName());
     }
+    /**
+     * Add an opening bracket to the AND condition in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .andOpenBracket('City')
+                .likeValue('%San')
+                .andCloseBracket('State')
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        AND  (City LIKE \'%San\' AND State LIKE \'%CA\')';
+     *
+     * @param fieldName the name of the field to use for the opening bracket in the AND condition
+     * @return the current instance of SOQLQueryBuilder with the opening bracket added to the AND condition
+     */
     public SOQLQueryBuilder andOpenBracket(String fieldName){
+        requireNonNull(fieldName, 'AND condition field name cannot be null!');
         String fieldNameId = setLogicalOperator(fieldName,OP_AND);
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
+    /**
+     * Add a closing bracket to the AND condition in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .andOpenBracket(Lead.City)
+                .likeValue('%San')
+                .andCloseBracket(Lead.State)
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        AND  (City LIKE \'%San\'  AND  State LIKE \'%CA\')';
+     *
+     * @param field the SObjectField to use for the closing bracket in the AND condition
+     * @return the current instance of SOQLQueryBuilder with the closing bracket added to the AND condition
+     */
     public SOQLQueryBuilder andCloseBracket(SObjectField field){
+        requireNonNull(field, 'AND condition field cannot be null!');
         return andCloseBracket(field.getDescribe().getName());
     }
+    /**
+     * Add a closing bracket to the AND condition in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .andOpenBracket('City')
+                .likeValue('%San')
+                .andCloseBracket('State')
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        AND  (City LIKE \'%San\'  OR  State LIKE \'%CA\')';
+     *
+     * @param fieldName the name of the field to use for the closing bracket in the AND condition
+     * @return the current instance of SOQLQueryBuilder with the closing bracket added to the AND condition
+     */
     public SOQLQueryBuilder andCloseBracket(String fieldName){
+        requireNonNull(fieldName, 'AND condition field name cannot be null!');
         String fieldNameId = setLogicalOperator(fieldName,OP_AND);
         this.fieldNameCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
         return this;
     }
+    /**
+     * Sets the OR condition in the SOQL query based on the provided SObjectField.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .orCondition(Lead.City)
+                .likeValue('%San');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        OR  City LIKE \'%San\'';
+     *
+     * @param field the SObjectField to use for the OR condition
+     * @return the SOQLQueryBuilder object with the OR condition based on the provided SObjectField
+     */
     public SOQLQueryBuilder orCondition(SObjectField field){
+        requireNonNull(field, 'OR condition field cannot be null!');
         return orCondition(field.getDescribe().getName());
     }
+    /**
+     * Sets the OR condition in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .orCondition('City')
+                .likeValue('%San');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        OR  City LIKE \'%San\'';
+     *
+     * @param fieldName the name of the field to use for the OR condition
+     * @return the SOQLQueryBuilder object with the OR condition based on the provided String field api name
+     */
     public SOQLQueryBuilder orCondition(String fieldName){
+        requireNonNull(fieldName, 'OR condition field name cannot be null!');
         setLogicalOperator(fieldName,OP_OR);
         return this;
     }
+    /**
+     * Add an opening bracket to the OR condition in the SOQL query based on the provided SObjectField.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .orOpenBracket(Lead.City)
+                .likeValue('%San')
+                .orCloseBracket(Lead.State)
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        OR  (City LIKE \'%San\' OR State LIKE \'%CA\')';
+     *
+     * @param field the SObjectField to use for the opening bracket in the OR condition
+     * @return the current instance of SOQLQueryBuilder with the opening bracket added to the OR condition
+     */
     public SOQLQueryBuilder orOpenBracket(SObjectField field){
+        requireNonNull(field, 'OR condition field cannot be null!');
         return orOpenBracket(field.getDescribe().getName());
     }
+    /**
+     * Add an opening bracket to the OR condition in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .orOpenBracket('City')
+                .likeValue('%San')
+                .orCloseBracket('State')
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        OR  (City LIKE \'%San\' OR State LIKE \'%CA\')';
+     *
+     * @param fieldName the name of the field to use for the opening bracket in the OR condition
+     * @return the current instance of SOQLQueryBuilder with the opening bracket added to the OR condition
+     */
     public SOQLQueryBuilder orOpenBracket(String fieldName){
+        requireNonNull(fieldName, 'OR condition field name cannot be null!');
         String fieldNameId = setLogicalOperator(fieldName,OP_OR);
         this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
+    /**
+     * Add a closing bracket to the OR condition in the SOQL query based on the provided SObjectField.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .orOpenBracket(Lead.City)
+                .likeValue('%San')
+                .orCloseBracket(Lead.State)
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        OR  (City LIKE \'%San\' OR State LIKE \'%CA\')';
+     *
+     * @param field the SObjectField to use for the closing bracket in the OR condition
+     * @return the current instance of SOQLQueryBuilder with the closing bracket added to the OR condition
+     */
     public SOQLQueryBuilder orCloseBracket(SObjectField field){
+        requireNonNull(field, 'OR condition field cannot be null!');
         return orCloseBracket(field.getDescribe().getName());
     }
+    /**
+     * Add a closing bracket to the OR condition in the SOQL query based on the provided String field api name.
+     *
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .likeValue('%San')
+                .orOpenBracket('City')
+                .likeValue('%San')
+                .orCloseBracket('State')
+                .likeValue('%CA');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource LIKE \'%San\'
+                                        OR  (City LIKE \'%San\' OR State LIKE \'%CA\')';
+     *
+     * @param fieldName the name of the field to use for the closing bracket in the OR condition
+     * @return the current instance of SOQLQueryBuilder with the closing bracket added to the OR condition
+     */
     public SOQLQueryBuilder orCloseBracket(String fieldName){
+        requireNonNull(fieldName, 'OR condition field name cannot be null!');
         String fieldNameId = setLogicalOperator(fieldName,OP_OR);
         this.fieldNameCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
         return this;
     }
+     /**
+      * Sets the equals (=) operator in the SOQL query with the provided value.
+      * @example
+      * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .equals('Web');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource = \'Web\'';
+        * @param value the value to use for the equals operator
+        * @return the current instance of SOQLQueryBuilder with the equals operator set
+      */
     public SOQLQueryBuilder equals(Object value){
         setOperator(OP_EQUALS,value);
         return this;
     }
+    /**
+     * Sets the not equals (!=) operator in the SOQL query with the provided value.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Lead.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Lead.LeadSource})
+                .whereClause(Lead.LeadSource)
+                .notEquals('Web');
+
+        String expectedQueryString = 'SELECT LeadSource FROM Lead WHERE LeadSource != \'Web\'';
+     * @param value the value to use for the not equals operator
+     * @return the current instance of SOQLQueryBuilder with the not equals operator set
+     */
     public SOQLQueryBuilder notEquals(Object value){
         setOperator(OP_NOT_EQUALS,value);
         return this;
     }
+    /**
+     * Sets the greater than (>) operator in the SOQL query with the provided value.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.NumberOfEmployees})
+                .whereClause(Account.NumberOfEmployees)
+                .greaterThan(12);
+
+        String expectedQueryString = 'SELECT NumberOfEmployees FROM Account WHERE NumberOfEmployees > 12';
+     * @param value the value to use for the greater than operator
+     * @return the current instance of SOQLQueryBuilder with the greater than operator set
+     */
     public SOQLQueryBuilder greaterThan(Object value){
+        requireNonNull(value, 'Value cannot be null for the greater than operator!');
         setOperator(OP_GREATER,value);
         return this;
     }
+    /**
+     * Sets the greater than or equals (>=) operator in the SOQL query with the provided value.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.NumberOfEmployees})
+                .whereClause(Account.NumberOfEmployees)
+                .greaterOrEquals(12);
+
+        String expectedQueryString = 'SELECT NumberOfEmployees FROM Account WHERE NumberOfEmployees >= 12';
+     * @param value the value to use for the greater than or equals operator
+     * @return the current instance of SOQLQueryBuilder with the greater than or equals operator set
+     */
     public SOQLQueryBuilder greaterOrEquals(Object value){
+        requireNonNull(value, 'Value cannot be null for the greater than or equals operator!');
         setOperator(OP_GREATER_EQUALS,value);
         return this;
     }
+    /**
+   * Sets the less than or equals (<=) operator in the SOQL query with the provided value.
+   * @example
+   * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+              .selectSpecificFields(new List<SObjectField>{Account.NumberOfEmployees})
+              .whereClause(Account.NumberOfEmployees)
+              .lessOrEquals(12);
+
+      String expectedQueryString = 'SELECT NumberOfEmployees FROM Account WHERE NumberOfEmployees <= 12';
+   * @param value the value to use for the less than or equals operator
+   * @return the current instance of SOQLQueryBuilder with the less than or equals operator set
+   */
     public SOQLQueryBuilder lessOrEquals(Object value){
+        requireNonNull(value, 'Value cannot be null for the less than or equals operator!');
         setOperator(OP_LESS_EQUALS,value);
         return this;
     }
+    /**
+     * Sets the less than (<) operator in the SOQL query with the provided value.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.NumberOfEmployees})
+                .whereClause(Account.NumberOfEmployees)
+                .lessThan(12);
+
+        String expectedQueryString = 'SELECT NumberOfEmployees FROM Account WHERE NumberOfEmployees < 12';
+     * @param value the value to use for the less than operator
+     * @return the current instance of SOQLQueryBuilder with the less than operator set
+     */
     public SOQLQueryBuilder lessThan(Object value){
+        requireNonNull(value, 'The value cannot be null for the less than operator');
         setOperator(OP_LESS,value);
         return this;
     }
+    /**
+     * Sets the operator INCLUDES in the SOQL query with the provided values.
+     * @example
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.AccountSource})
+                .whereClause(Account.AccountSource)
+                .includes(new List<String>{'Web','Phone Inquiry'})
+                .orCondition(Account.AccountSource)
+                .excludes(new List<String>{'Other'});
+
+        String expectedQueryString = 'SELECT AccountSource FROM Account WHERE ' +
+                'AccountSource INCLUDES (\'Web\',\'Phone Inquiry\') OR AccountSource EXCLUDES (\'Other\')';
+     *
+     * @param values a list of values to use for the INCLUDES operator
+     * @return the SOQLQueryBuilder instance with include operator set
+     */
     public SOQLQueryBuilder includes(List<String> values){
+        requireNonNull(values, 'The values list cannot be null for the includes operator');
         setOperator(OP_INCLUDES,values);
         return this;
     }
+    /**
+     * Sets the operator EXCLUDES in the SOQL query with the provided values.
+     * @example
+     *  SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.AccountSource})
+                .whereClause(Account.AccountSource)
+                .includes(new List<String>{'Web','Phone Inquiry'})
+                .orCondition(Account.AccountSource)
+                .excludes(new List<String>{'Other'});
+
+        String expectedQueryString = 'SELECT AccountSource FROM Account WHERE ' +
+                'AccountSource INCLUDES (\'Web\',\'Phone Inquiry\') OR AccountSource EXCLUDES (\'Other\')';
+     *
+     * @param values a list of values to use for the EXCLUDES operator
+     * @return the SOQLQueryBuilder instance with exclude operator set
+     */
     public SOQLQueryBuilder excludes(List<String> values){
+        requireNonNull(values, 'The values list cannot be null for the excludes operator');
         setOperator(OP_EXCLUDES,values);
         return this;
     }
+    /**
+     * Sets the operator IN in the SOQL query with the provided values.
+     * @example
+      SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                 selectSpecificFields(new List<SObjectField>{Account.Id})
+                .whereClause('Id')
+                .inside(new List<Id>{'001D0000000X0X0','001D0000000X0X1'});
+
+        String expectedQueryString = 'SELECT Id FROM Account WHERE Id IN (\'001D0000000X0X0\',\'001D0000000X0X1\')';
+     *
+     * @param values a list of values to use for the IN operator
+     * @return the SOQLQueryBuilder instance with IN operator set
+     */
     public SOQLQueryBuilder inside(List<Object> values){
+        requireNonNull(values, 'The values list cannot be null for the inside operator');
         setOperator(OP_IN,values);
         return this;
     }
+    /**
+     * Sets the operator NOT IN in the SOQL query with the provided values.
+     * @example
+      SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                 selectSpecificFields(new List<SObjectField>{Account.Id})
+                .whereClause('Id')
+                .notInside(new List<Id>{'001D0000000X0X0','001D0000000X0X1'});
+
+        String expectedQueryString = 'SELECT Id FROM Account WHERE Id NOT IN (\'001D0000000X0X0\',\'001D0000000X0X1\')';
+     *
+     * @param values a list of values to use for the NOT IN operator
+     * @return the SOQLQueryBuilder instance with NOT IN operator set
+     */
     public SOQLQueryBuilder notInside(List<Object> values){
+        requireNonNull(values, 'The values list cannot be null for the not inside operator');
         setOperator(OP_NOT_IN,values);
         return this;
     }
+    /**
+     * Sets the operator LIKE in the SOQL query with the provided value.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name})
+                .whereClause(Account.Name)
+                .likeValue('Acme%');
+
+        String expectedQueryString = 'SELECT Name FROM Account WHERE Name LIKE \'Acme%\'';
+     * @param value the value to use for the LIKE operator
+     * @return the current instance of SOQLQueryBuilder with the LIKE operator set
+     */
     public SOQLQueryBuilder likeValue(String value){
+        requireNonNull(value, 'The value cannot be null for the like operator');
         setOperator(OP_LIKE,value);
         return this;
     }
+    /**
+     * Sets the operator NOT LIKE in the SOQL query with the provided value.
+     * @example
+     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+                .selectSpecificFields(new List<SObjectField>{Account.Name})
+                .whereClause(Account.Name)
+                .notLikeValue('Acme%');
+
+        String expectedQueryString = 'SELECT Name FROM Account WHERE Name NOT LIKE \'Acme%\'';
+     * @param value the value to use for the NOT LIKE operator
+     * @return the current instance of SOQLQueryBuilder with the NOT LIKE operator set
+     */
     public SOQLQueryBuilder notLikeValue(String value){
+        requireNonNull(value, 'The value cannot be null for the not like operator');
         setOperator(OP_NOT_LIKE,value);
         return this;
     }
-
+    /**
+    * Returns the result of the SOQL query as a list of sObjects.
+    *
+    * @return the result of the SOQL query as a list of sObjects
+    */
     public List<SObject> getResultList(){
         return Database.query(generateQuery(null));
     }
+    /**
+     * Returns the result of the SOQL query as a map of sObjects.
+     * @return  the result of the SOQL query as a map of sObjects
+     * where the key is the Id of the sObject and the value is the sObject itself.
+     */
     public Map<Id,SObject> getResultMap(){
         return new Map<Id, SObject>(getResultList());
     }
+    /**
+     * Returns the result of the SOQL query as a single sObject.
+     * If the query returns more than one sObject, the first one is returned.
+     *
+     * @return the result of the SOQL query as a single sObject
+     * or null if the query returns no sObject.
+     */
     public SObject getSingleResult(){
         List<SObject> sObjects = getResultList();
         return sObjects.size() > 0 ? sObjects.get(0) : null;
     }
+    /**
+     * Returns the result of the SOQL query as a single sObject.
+     * If the query returns more than one sObject, the first one is returned.
+     *
+     * @param messageIfNull the message to use in the exception if the query returns no sObject
+     * @return the result of the SOQL query as a single sObject
+     * @throws SObjectException if the query returns no sObject
+     */
     public SObject getSingleResult(String messageIfNull){
+        requireNonNull(messageIfNull, 'The messageIfNull cannot be null for the getSingleResult method!');
         List<SObject> sObjects = getResultList();
         if(sObjects.size()>0){
             return sObjects.get(0);
         }
         throw new SObjectException(messageIfNull);
     }
+
+    /**
+     * Returns the number of records returned by the SOQL query
+     * @return the number of records that a dynamic SOQL query would return when executed
+     */
     public Integer getIntegerResult(){
         return Database.countQuery(generateQuery(null));
     }
-
+    /**
+    * Returns the result of the SOQL query as an array of AggregateResult.
+    *
+    * @return AggregateResult[] the result of the SOQL query
+    */
     public AggregateResult[] getAggregateResult(){
         return (AggregateResult[]) Database.query(generateQuery(null));
     }
-
+    /**
+       * Returns the SOQL query string used to generate the result.
+       *
+       * @return the SOQL query string used to generate the result.
+    */
     public override String toString(){
         return this.generateQuery(null);
     }
-
     private String generateQuery(String childRelationshipName){
         String sObjectTypeNameInQuery = childRelationshipName!=null ? childRelationshipName : this.sObjectTypeName;
         String limitStatement = this.limitNumber!=null ? LIMIT_STR+' '+this.limitNumber: '';
@@ -506,7 +1467,6 @@ public with sharing class SOQLQueryBuilder {
     private String generateParentFields(){
         String parentFieldsString = '';
         if(this.parentQueries.size()>0){
-
             for(SOQLQueryBuilder parentQueryBuilder:this.parentQueries){
                 String sObjectTypeName = parentQueryBuilder.parentSObjectTypeName != null ?
                         parentQueryBuilder.parentSObjectTypeName : convertSObjectTypeNameToParent(parentQueryBuilder.sObjectTypeName);
@@ -686,6 +1646,12 @@ public with sharing class SOQLQueryBuilder {
             }
         }
         return null;
+    }
+    private static Object requireNonNull(Object obj, String message){
+        if (obj == null){
+            throw new IllegalArgumentException(message);
+        }
+        return obj;
     }
 
 }

@@ -73,7 +73,7 @@ public with sharing class SOQLQueryBuilderTest {
         }catch (Exception e){
            exceptionMessage  = e.getMessage();
         }
-        Assert.isTrue(exceptionMessage!=null);
+        Assert.isNotNull(exceptionMessage);
     }
 
     @IsTest
@@ -95,14 +95,14 @@ public with sharing class SOQLQueryBuilderTest {
                 'OR  AccountSource = \'Web\'   LIMIT 4';
 
         List<Account> accounts = soqlQueryBuilder.getResultList();
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
         Assert.areEqual(4,accounts.size());
         for(Account account:  accounts){
-            Assert.areEqual(true,account.Name.contains(ACCOUNT_NAME));
+            Assert.isTrue(account.Name.contains(ACCOUNT_NAME));
             Assert.areEqual('Web',account.AccountSource);
         }
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsByIdShouldReturnAccounts(){
@@ -140,9 +140,10 @@ public with sharing class SOQLQueryBuilderTest {
         }catch (SObjectException e){
             exceptionMessage  = e.getMessage();
         }
-        Assert.isTrue(exceptionMessage!=null);
+        Assert.isNotNull(exceptionMessage);
         Assert.isTrue(queryString.contains('Id'));
     }
+    //TODO: fix this test
     @IsTest
     public static void testQueryAccountsByAccountLevelDiscountShouldReturnAccounts(){
        List<Decimal> numberOfEmployees = new List<Decimal>{10,40,22,23};
@@ -152,19 +153,20 @@ public with sharing class SOQLQueryBuilderTest {
                 .whereClause(Account.NumberOfEmployees)
                 .inside(numberOfEmployees)
                 .andCondition(Account.CreatedDate)
-                .greaterThan(Datetime.newInstance(2022,02,1))
+                .greaterThan(Date.newInstance(2022,02,1))
                 .addLimit(100)
                 .addOffset(10);
 
        String expectedQueryString = 'SELECT Name,NumberOfEmployees FROM Account WHERE  ' +
-               ' NumberOfEmployees IN (10,40,22,23)  AND  CreatedDate > 2022-02-01T00:00:00Z LIMIT 100 OFFSET 10';
+               ' NumberOfEmployees IN (10,40,22,23) AND CreatedDate > 2022-02-01T00:00:00Z LIMIT 100 OFFSET 10';
 
        List<Account> accounts = soqlQueryBuilder.getResultList();
-       String queryString = soqlQueryBuilder.toString();
+       String actualQueryString = soqlQueryBuilder.toString();
 
        for(Account account: accounts){
             Assert.isTrue(numberOfEmployees.contains(account.NumberOfEmployees));
        }
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testCountAccountsByIdShouldReturnInteger(){
@@ -172,11 +174,12 @@ public with sharing class SOQLQueryBuilderTest {
                 .addFunction(SOQLFunction.of(SOQLFunction.FunctionName.COUNT));
 
         Integer accountCount = soqlQueryBuilder.getIntegerResult();
-        String queryString = soqlQueryBuilder.toString();
         String expectedQueryString = 'SELECT COUNT() FROM Account';
 
+        String actualQueryString = soqlQueryBuilder.toString();
+
         Assert.areEqual(10,accountCount);
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testCountAccountsByAccountSourceFieldShouldReturnAggregateResult(){
@@ -206,10 +209,10 @@ public with sharing class SOQLQueryBuilderTest {
                 'HAVING  (COUNT(Id) > 1  OR  COUNT(Id) < 100) AND (COUNT(Id) >= 100  OR  COUNT(Id) <= 10)';
 
         AggregateResult[] accountCountAggregate = soqlQueryBuilder.getAggregateResult();
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
         Assert.isTrue((Integer) accountCountAggregate.get(0).get('expr0')>1);
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testLeadsGroupByName(){
@@ -241,9 +244,9 @@ public with sharing class SOQLQueryBuilderTest {
 
         String expectedQueryString = 'SELECT LeadSource,COUNT(Name) FROM Lead GROUP BY LeadSource HAVING COUNT(Name) > 23';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testCountLeadsByNameGroupByCity(){
@@ -260,9 +263,9 @@ public with sharing class SOQLQueryBuilderTest {
         String expectedQueryString = 'SELECT City,COUNT(Name) FROM Lead GROUP BY City ' +
                 'HAVING  (City LIKE \'%San\'  AND  COUNT(Name) > 1)';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testAverageAccountsAccountLevelDiscountFieldShouldReturnAggregateResult(){
@@ -272,10 +275,11 @@ public with sharing class SOQLQueryBuilderTest {
         String expectedQueryString = 'SELECT AVG(NumberOfEmployees) FROM Account';
 
         AggregateResult[] accountAverageAggregate = soqlQueryBuilder.getAggregateResult();
-        String queryString = soqlQueryBuilder.toString();
+
+        String actualQueryString = soqlQueryBuilder.toString();
 
         Assert.areEqual(55,accountAverageAggregate.get(0).get('expr0')) ;
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testInnerContactQueryWithAccountShouldReturnAccountWithContacts(){
@@ -295,35 +299,34 @@ public with sharing class SOQLQueryBuilderTest {
                 'FROM Account WHERE   Name LIKE \'%Test account name%\'';
 
         List<Account> accounts = soqlQueryBuilder.getResultList();
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
         for(Account account: accounts){
            System.assert(!account.Contacts.isEmpty());
         }
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
-    public static void testInnerContactAndCasesQueryWithAccountShouldReturnAccountWithContactsAndCases(){
+    public static void testInnerContactAndContractQueryWithAccountShouldReturnAccountWithContactsAndContracts(){
       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Account.Name})
                 .addInnerQuery(new SOQLQueryBuilder(Contact.getSObjectType())
                         .selectSpecificFields(new List<SObjectField>{Contact.Name}))
-                .addInnerQuery(new SOQLQueryBuilder(Case.getSObjectType())
-                        .selectSpecificFields(new List<SObjectField>{Case.SuppliedName}))
+                .addInnerQuery(new SOQLQueryBuilder(Contract.getSObjectType())
+                        .selectSpecificFields(new List<SObjectField>{Contract.Name}))
                 .whereClause(Contact.Name)
                 .likeValue('%'+ACCOUNT_NAME+'%');
 
-        String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts ),(SELECT SuppliedName FROM Cases ) ' +
+        String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts ),(SELECT Name FROM Contracts ) ' +
                 'FROM Account WHERE   Name LIKE \'%Test account name%\'';
 
         List<Account> accounts = soqlQueryBuilder.getResultList();
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
         for(Account account: accounts){
             Assert.isTrue(!account.Contacts.isEmpty());
-            Assert.isTrue(account.Cases.isEmpty());
         }
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testParentAccountQueryWithContactShouldReturnContact(){
@@ -341,10 +344,10 @@ public with sharing class SOQLQueryBuilderTest {
                 ' LastName LIKE \'%Contact lastName%\'';
 
         Contact contact = (Contact) soqlQueryBuilder.getSingleResult();
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
         Assert.areEqual(ACCOUNT_NAME+' 1',contact.Account.Name);
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testAccountOrderByShouldReturnAccounts(){
@@ -361,10 +364,10 @@ public with sharing class SOQLQueryBuilderTest {
                 'ORDER BY Name ASC NULLS FIRST, NumberOfEmployees DESC NULLS LAST';
 
         List<Account> accounts = soqlQueryBuilder.getResultList();
-        String queryString = soqlQueryBuilder.toString();
-        Assert.areEqual(8,accounts.size());
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(8,accounts.size());
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testAccountGroupByShouldReturnAccounts(){
@@ -375,10 +378,10 @@ public with sharing class SOQLQueryBuilderTest {
        String expectedQueryString = 'SELECT Name FROM Account GROUP BY Name';
 
        AggregateResult[] aggregateResult = soqlQueryBuilder.getAggregateResult();
-       String queryString = soqlQueryBuilder.toString();
+       String actualQueryString = soqlQueryBuilder.toString();
 
        Assert.areEqual(10,aggregateResult.size());
-       Assert.isTrue(queryString.containsOnly(expectedQueryString));
+       Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsShouldReturnAccountsForUpdate(){
@@ -386,36 +389,36 @@ public with sharing class SOQLQueryBuilderTest {
 
         String expectedQueryString = 'SELECT Id FROM Account FOR UPDATE';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsShouldReturnAccountsForView(){
         SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).forView();
         String expectedQueryString = 'SELECT Id FROM Account FOR VIEW';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsShouldReturnAccountsForReference(){
         SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).forReference();
         String expectedQueryString = 'SELECT Id FROM Account FOR REFERENCE';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsShouldReturnAccountsUpdateTracking(){
         SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType()).updateTracking();
         String expectedQueryString = 'SELECT Id FROM Account UPDATE TRACKING';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsShouldReturnAccountsUpdateViewStat(){
@@ -423,9 +426,9 @@ public with sharing class SOQLQueryBuilderTest {
 
         String expectedQueryString = 'SELECT Id FROM Account UPDATE VIEWSTAT';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsByNameShouldReturnAccountsAllRows(){
@@ -443,9 +446,9 @@ public with sharing class SOQLQueryBuilderTest {
                 ' Name LIKE \'%Test account name%\'  AND (Name != \'fail\' AND  Name != \'\') ' +
                 ' WITH SECURITY_ENFORCED ALL ROWS';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsByCustomWhereStatementShouldReturnAccounts(){
@@ -456,13 +459,13 @@ public with sharing class SOQLQueryBuilderTest {
         String expectedQueryString = 'SELECT Name FROM Account  WHERE Name Like \'%Test account name%\'';
 
         List<Account> accounts = soqlQueryBuilder.getResultList();
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
         Assert.areEqual(10,accounts.size());
         for(Account account:  accounts){
             Assert.isTrue(account.Name.contains(ACCOUNT_NAME));
         }
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsShouldReturnAccountsUsingWithStatement(){
@@ -470,9 +473,9 @@ public with sharing class SOQLQueryBuilderTest {
                 .with('DATA CATEGORY Geography__c').withSecurityEnforced();
         String expectedQueryString = 'SELECT Id FROM Account WITH DATA CATEGORY Geography__c SECURITY_ENFORCED';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryAccountsByNameShouldReturnAccountsUsingScope(){
@@ -483,9 +486,9 @@ public with sharing class SOQLQueryBuilderTest {
 
         String expectedQueryString = 'SELECT Id FROM Account WHERE Name LIKE \'%Test account name%\' USING SCOPE mine';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testQueryLeadWithGroupByRollup(){
@@ -499,9 +502,9 @@ public with sharing class SOQLQueryBuilderTest {
         String expectedQueryString = 'SELECT LeadSource,Rating,GROUPING(LeadSource) grpLS,GROUPING(Rating) grpRating,' +
                 'COUNT(Name) cnt FROM Lead GROUP BY ROLLUP(LeadSource,Rating)';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testInnerFunctionWithGroupBy(){
@@ -520,9 +523,9 @@ public with sharing class SOQLQueryBuilderTest {
         String expectedQueryString = 'SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)),SUM(Amount) FROM Opportunity ' +
                 'GROUP BY HOUR_IN_DAY(convertTimezone(CreatedDate))';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testMultiSelectPicklistOperators(){
@@ -536,9 +539,9 @@ public with sharing class SOQLQueryBuilderTest {
         String expectedQueryString = 'SELECT AccountSource FROM Account WHERE ' +
                 'AccountSource INCLUDES (\'Web\',\'Phone Inquiry\') OR AccountSource EXCLUDES (\'Other\')';
 
-        String queryString = soqlQueryBuilder.toString();
+        String actualQueryString = soqlQueryBuilder.toString();
 
-        Assert.isTrue(queryString.containsOnly(expectedQueryString));
+        Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
     @IsTest
     public static void testSOQLFunction(){
@@ -546,14 +549,65 @@ public with sharing class SOQLQueryBuilderTest {
         SOQLFunction sumAmountFunction = SOQLFunction.of(SOQLFunction.FunctionName.SUM,Opportunity.Amount)
                 .setAlias(sumAmountFunctionAlias);
 
-
         Assert.areEqual(SOQLFunction.FunctionName.SUM,sumAmountFunction.getName());
         Assert.areEqual(sumAmountFunctionAlias,  sumAmountFunction.getAlias());
         Assert.areEqual(Opportunity.Amount.getDescribe().getName(),  sumAmountFunction.getFieldNames().get(0));
-        Assert.areEqual(null,  sumAmountFunction.getInnerFunction());
+        Assert.isNull(sumAmountFunction.getInnerFunction());
 
         sumAmountFunction.setFieldNames(new List<String>{Opportunity.Name.getDescribe().getName()});
         Assert.areEqual(Opportunity.Name.getDescribe().getName(),  sumAmountFunction.getFieldNames().get(0));
     }
+
+    @IsTest
+    public static void testConvertSObjectTypeNameToParent(){
+        SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType());
+
+        String standardObjectNameResult = soqlQueryBuilder.convertSObjectTypeNameToParent('Account');
+        System.assertEquals('Account', standardObjectNameResult);
+
+        String customObjectNameResult = soqlQueryBuilder.convertSObjectTypeNameToParent('Custom__c');
+        System.assertEquals('Custom__r', customObjectNameResult);
+    }
+    @IsTest
+    public static void testGetAllFieldsForSObject() {
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', true, true, true);
+
+        Assert.isTrue(fields.size() > 0);
+        for (SObjectField field : fields) {
+            Assert.isNotNull(field.getDescribe().getName());
+            Assert.isNotNull(field.getDescribe().getLabel());
+            Assert.isNotNull(field.getDescribe().getType());
+        }
+    }
+    @IsTest
+    public static void testGetCustomFieldsForSObject() {
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', true, false, true);
+
+        for (SObjectField field : fields) {
+            Assert.isTrue(field.getDescribe().isCustom());
+        }
+    }
+    @IsTest
+    public static void testGetStandardFieldsForSObject() {
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', false, true, true);
+
+        for (SObjectField field : fields) {
+            Assert.isTrue(!field.getDescribe().isCustom());
+        }
+    }
+    @IsTest
+    public static void testGetAllFieldsLargeFieldsExcludedFieldsForSObject() {
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', true, true, false);
+
+        for (SObjectField field : fields) {
+            Assert.isTrue(field.getDescribe().getLength() <= 255);
+        }
+    }
+    @IsTest
+    public static void testGetChildRelationshipNameShouldReturnStringNameOfRelationship() {
+        String relationshipName = SOQLQueryBuilder.getChildRelationshipName(Account.SObjectType, Contact.SObjectType);
+        System.assertEquals('Contacts', relationshipName);
+    }
+
 
 }

@@ -1555,6 +1555,7 @@ public with sharing class SOQLQueryBuilder {
         str += CLOSE_BRACKET;
         return str;
     }
+    @TestVisible
     private String convertSObjectTypeNameToParent(String sObjectTypeName){
         String parentsObjectTypeName = sObjectTypeName;
         if(parentsObjectTypeName.endsWithIgnoreCase('__c')){
@@ -1611,6 +1612,7 @@ public with sharing class SOQLQueryBuilder {
         }
         return fieldNames;
     }
+
     public static List<SObjectField> getFieldsForSObject(String objectType,Boolean isCustom,Boolean isStandard,Boolean includeLargeText){
         List<Schema.SObjectField> fieldsToReturn = new List<Schema.SObjectField>();
         List<Schema.SObjectField> sObjectFields = getAllFieldsForSObjectType(objectType);
@@ -1647,7 +1649,7 @@ public with sharing class SOQLQueryBuilder {
         }
         return null;
     }
-    private static Object requireNonNull(Object obj, String message){
+    private Object requireNonNull(Object obj, String message){
         if (obj == null){
             throw new IllegalArgumentException(message);
         }

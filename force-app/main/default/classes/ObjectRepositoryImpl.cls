@@ -1,3 +1,6 @@
+/*
+    Generic Object Repository implementation for SObjects
+ */
 public virtual class ObjectRepositoryImpl implements ObjectRepository{
 
     private final String sObjectTypeName;

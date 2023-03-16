@@ -4,7 +4,7 @@ Provides a flexible and dynamic extensible Repository layer for SObjects.
 
 A repository layer is a design pattern in software architecture that provides an abstraction between the data access code and the rest of the application. The repository pattern allows for the encapsulation of data access logic. It help to maintain the clean separation of concerns between the business logic and data access logic making the codebase more robust and maintainable.
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YyjfQAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YymtQAC">
 <img alt="Deploy to Salesforce"
 src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>

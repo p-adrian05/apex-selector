@@ -163,16 +163,23 @@ Using addInnerQuery method twice which is used to query child records through a 
 ```
 ### Select records with parent fields
 Using class also uses addParentQuery method twice which is used to query parent records through a relationship creating new SOQLQueryBuilder instances for them. The first time it's used to add a query for the Account object, and the second time it's used to query the parent records of the Contact object with the ReportsTo relationship.
+
 ```Apex
     SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
-        .selectSpecificFields(new List<SObjectField>{Contact.LastName})
+        .selectSpecificFields(new List<SObjectField>{
+                Contact.LastName
+        })
         .addParentQuery(new SOQLQueryBuilder(Account.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{Account.Name}))
+                .selectSpecificFields(new List<SObjectField>{
+                        Account.Name
+                }))
         .addParentQuery(new SOQLQueryBuilder(Contact.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{Contact.Name})
-                .setParentSObjectTypeName('ReportsTo'))
+                .selectSpecificFields(new List<SObjectField>{
+                        Contact.Name
+                })
+                .setParentLookupFieldName('ReportsTo'))
         .whereClause(Contact.LastName)
-        .likeValue('%'+CONTACT_LAST_NAME+'%');
+        .likeValue('%' + CONTACT_LAST_NAME + '%');
 
 'SELECT LastName,Account.Name,ReportsTo.Name FROM Contact ' +
         'WHERE LastName LIKE \'%Contact lastName%\'';

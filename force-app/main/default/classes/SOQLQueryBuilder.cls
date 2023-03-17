@@ -71,8 +71,8 @@ public with sharing class SOQLQueryBuilder {
     private List<SOQLQueryBuilder> innerQueries;
     //List to store the parent queries
     private List<SOQLQueryBuilder> parentQueries;
-    //Name of the parent SObject type for the parent query if it's not the main SObject type
-    private String parentSObjectTypeName;
+    //Name of the parent lookup field name  for the parent query if it's not the main SObject type name
+    private String parentLookupFieldName;
 
     private String strWhereStatement;
     private String withStatement;
@@ -157,23 +157,23 @@ public with sharing class SOQLQueryBuilder {
     }
 
     /**
-    * Sets the parent SObject type name to be used in the SOQL query when adding a parent query and the
-     * relationsShip name is not the same as the parent SObject type name.
+    * Sets the parent lookup field name to be used in the SOQL query when adding a parent query and the
+     * lookup relationship field name is not the same as the parent SObject type name.
      * @example
      * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Contact.LastName})
                  .addParentQuery(new SOQLQueryBuilder(Contact.getSObjectType())
                          .selectSpecificFields(new List<SObjectField>{Contact.Name})
-                         .setParentSObjectTypeName('ReportsTo'));
+                         .setParentLookupFieldName('ReportsTo'));
 
         String expectedQueryString = 'SELECT LastName,ReportsTo.Name FROM Contact;
     *
-    * @param parentSObjectTypeName the parent SObject type name to be set.
+    * @param parentLookupFieldName the parent lookup field name to be set.
     * @return SOQLQueryBuilder the current instance of the builder.
     */
-    public SOQLQueryBuilder setParentSObjectTypeName(String parentSObjectTypeName){
-        requireNonNull(parentSObjectTypeName, 'Parent SObject type name cannot be null!');
-        this.parentSObjectTypeName = parentSObjectTypeName;
+    public SOQLQueryBuilder setParentLookupFieldName(String parentLookupFieldName){
+        requireNonNull(parentLookupFieldName, 'Parent lookup field name cannot be null!');
+        this.parentLookupFieldName = parentLookupFieldName;
         return this;
     }
     /**
@@ -1524,8 +1524,8 @@ public with sharing class SOQLQueryBuilder {
         String parentFieldsString = '';
         if(this.parentQueries.size()>0){
             for(SOQLQueryBuilder parentQueryBuilder:this.parentQueries){
-                String sObjectTypeName = parentQueryBuilder.parentSObjectTypeName != null ?
-                        parentQueryBuilder.parentSObjectTypeName : convertSObjectTypeNameToParent(parentQueryBuilder.sObjectTypeName);
+                String sObjectTypeName = parentQueryBuilder.parentLookupFieldName != null ?
+                        parentQueryBuilder.parentLookupFieldName : convertSObjectTypeNameToParent(parentQueryBuilder.sObjectTypeName);
 
                 Set<String> parentFields = convertFieldsToParentFields(sObjectTypeName,parentQueryBuilder.fields);
                 parentFieldsString += String.join(new List<String>(parentFields),',')+',';

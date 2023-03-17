@@ -336,7 +336,7 @@ public with sharing class SOQLQueryBuilderTest {
                         .selectSpecificFields(new List<SObjectField>{Account.Name}))
                  .addParentQuery(new SOQLQueryBuilder(Contact.getSObjectType())
                          .selectSpecificFields(new List<SObjectField>{Contact.Name})
-                         .setParentSObjectTypeName('ReportsTo'))
+                         .setParentLookupFieldName('ReportsTo'))
                 .whereClause(Contact.LastName)
                 .likeValue('%'+CONTACT_LAST_NAME+'%');
 

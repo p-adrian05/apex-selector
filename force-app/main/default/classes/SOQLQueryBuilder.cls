@@ -48,7 +48,7 @@ public with sharing class SOQLQueryBuilder {
 
     private final static String DEFAULT_FIELD = 'Id';
 
-    private String sObjectTypeName;
+    private SObjectType currentSObjectType;
     //Maps to store the field name and the operator to be used in the query
     private Map<String,String> fieldNameOperatorMap;
     //Maps to store the field name and the logical operator to be used in the query
@@ -71,8 +71,10 @@ public with sharing class SOQLQueryBuilder {
     private List<SOQLQueryBuilder> innerQueries;
     //List to store the parent queries
     private List<SOQLQueryBuilder> parentQueries;
-    //Name of the parent lookup field name for the parent fields query if it's not the main SObject type name
-    private String parentLookupFieldName;
+    //Name of the parent relationship for the parent fields query
+    private String parentRelationshipName;
+    //Name of the child relationship for the child fields query
+    private String childRelationshipName;
 
     private String strWhereStatement;
     private String withStatement;
@@ -93,20 +95,21 @@ public with sharing class SOQLQueryBuilder {
 
     public SOQLQueryBuilder(SObjectType sObjectType){
         requireNonNull(sObjectType, 'SObject type cannot be null!');
-        init(sObjectType.getDescribe().getName());
+        init(sObjectType);
     }
     public SOQLQueryBuilder(String sObjectTypeName){
-        requireNonNull(sObjectTypeName, 'SObject type cannot be null!');
+        requireNonNull(sObjectTypeName, 'SObject type name cannot be null!');
         try{
-            ((SObject) Type.forName(sObjectTypeName).newInstance())
+            SObjectType currentSObjectType = ((SObject) Type.forName(sObjectTypeName).newInstance())
                     .getSObjectType();
+            init(currentSObjectType);
         }catch (Exception e){
             throw new SObjectException('Invalid SObject type: ' + sObjectTypeName);
         }
-        init(sObjectTypeName);
+
     }
-    private void init(String sObjectTypeName){
-        this.sObjectTypeName = sObjectTypeName;
+    private void init(SObjectType currentSObjectType){
+        this.currentSObjectType = currentSObjectType;
         this.fieldNameValueMap = new Map<String,Object>();
         this.fieldNameOperatorMap = new Map<String,String>();
         this.fieldNameLogicalOperatorMap = new Map<String,String>();
@@ -157,8 +160,8 @@ public with sharing class SOQLQueryBuilder {
     }
 
     /**
-    * Sets the parent lookup field name to be used in the SOQL query when adding a parent query and the
-     * lookup relationship field name is not the same as the parent SObject type name.
+    * Sets the parent relationship name to be used in the SOQL query when adding a parent query and the
+     * relationship name is not the same as the parent SObject type name.
      * @example
      * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Contact.LastName})
@@ -168,12 +171,32 @@ public with sharing class SOQLQueryBuilder {
 
         String expectedQueryString = 'SELECT LastName,ReportsTo.Name FROM Contact;
     *
-    * @param parentLookupFieldName the parent lookup field name to be set.
+    * @param parentRelationshipName the parent relationship name to be used in the SOQL query.
     * @return SOQLQueryBuilder the current instance of the builder.
     */
-    public SOQLQueryBuilder setParentLookupFieldName(String parentLookupFieldName){
-        requireNonNull(parentLookupFieldName, 'Parent lookup field name cannot be null!');
-        this.parentLookupFieldName = parentLookupFieldName;
+    public SOQLQueryBuilder setParentRelationshipName(String parentRelationshipName){
+        requireNonNull(parentRelationshipName, 'Parent relationship name cannot be null!');
+        this.parentRelationshipName = parentRelationshipName;
+        return this;
+    }
+    /**
+   * Sets the child relationship name to be used in the SOQL query when adding a related child query and the
+    * and multiple child relationships exist for the same SObject type.
+    * @example
+    * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
+              .selectSpecificFields(new List<SObjectField>{Account.Name})
+                .addInnerQuery(new SOQLQueryBuilder(Contact.getSObjectType())
+                        .selectSpecificFields(new List<SObjectField>{Contact.Name})
+                        .setChildRelationshipName('Contacts'));
+
+        String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts ) FROM Account';
+   *
+   * @param childRelationshipName the child relationship name to be used in the SOQL query.
+   * @return SOQLQueryBuilder the current instance of the builder.
+   */
+    public SOQLQueryBuilder setChildRelationshipName(String childRelationshipName){
+        requireNonNull(childRelationshipName, 'Child relationship name cannot be null!');
+        this.childRelationshipName = childRelationshipName;
         return this;
     }
     /**
@@ -200,7 +223,7 @@ public with sharing class SOQLQueryBuilder {
    */
     public SOQLQueryBuilder selectCustomFields(Boolean includeLargeText){
         requireNonNull(includeLargeText, 'Include large text cannot be null!');
-        this.fields.addAll(getCustomFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
+        this.fields.addAll(getCustomFieldNamesForSObjectType(this.currentSObjectType,includeLargeText));
         this.fields.add(DEFAULT_FIELD);
         return this;
     }
@@ -212,7 +235,7 @@ public with sharing class SOQLQueryBuilder {
     */
     public SOQLQueryBuilder selectAllFields(Boolean includeLargeText){
         requireNonNull(includeLargeText, 'Include large text cannot be null!');
-        this.fields.addAll(getAllFieldNamesForSObjectType(this.sObjectTypeName,includeLargeText));
+        this.fields.addAll(getAllFieldNamesForSObjectType(this.currentSObjectType,includeLargeText));
         return this;
     }
     /**
@@ -221,7 +244,7 @@ public with sharing class SOQLQueryBuilder {
     * @return SOQLQueryBuilder the current instance of the builder.
     */
     public SOQLQueryBuilder selectStandardFields(){
-        this.fields.addAll(getStandardFieldNamesForSObjectType(this.sObjectTypeName));
+        this.fields.addAll(getStandardFieldNamesForSObjectType(this.currentSObjectType));
         return this;
     }
     /**
@@ -1403,7 +1426,7 @@ public with sharing class SOQLQueryBuilder {
     private String generateQuery(String childRelationshipName){
         //the query string is built based on the sObject type name
         //or if the child relationship name specified it is building as an inner child query
-        String sObjectTypeNameInQuery = childRelationshipName!=null ? childRelationshipName : this.sObjectTypeName;
+        String sObjectTypeNameInQuery = childRelationshipName!=null ? childRelationshipName : this.currentSObjectType.getDescribe().getName();
         String limitStatement = this.limitNumber!=null ? LIMIT_STR+' '+this.limitNumber: '';
         String forUpdateStatement = this.forUpdate ? FOR_UPDATE_STR : '';
         String forViewStatement = this.forView ? FOR_VIEW_STR : '';
@@ -1506,8 +1529,27 @@ public with sharing class SOQLQueryBuilder {
         String innerQueryString = '';
         if(this.innerQueries.size()>0){
             for(SOQLQueryBuilder innerQueryBuilder:innerQueries){
-                innerQueryString += '('+innerQueryBuilder.generateQuery(
-                       getChildRelationshipName(this.sObjectTypeName,innerQueryBuilder.sObjectTypeName))+'),';
+                //if the child relationship name is not specified, try to find it automatically
+                String childRelationshipName = innerQueryBuilder.childRelationshipName;
+                if(childRelationshipName==null){
+                    List<String> childRelationshipFieldNames = getChildRelationshipNames(
+                            this.currentSObjectType,innerQueryBuilder.currentSObjectType);
+
+                    if(childRelationshipFieldNames.isEmpty()){
+                        throw new SObjectException('No child relationship found between '+
+                                this.currentSObjectType+' and '+innerQueryBuilder.currentSObjectType);
+                    }
+                    if(childRelationshipFieldNames.size()>1){
+                        throw new SObjectException('Multiple child relationships found between '+
+                                this.currentSObjectType+' and '+innerQueryBuilder.currentSObjectType +' : '
+                                +childRelationshipFieldNames
+                                +'. Please specify the child relationship name in the query ' +
+                                'using setChildRelationshipName(String childRelationshipName) method.)');
+                    }
+                    childRelationshipName = childRelationshipFieldNames.get(0);
+                }
+                //add the child query to the inner query string
+                innerQueryString += '('+innerQueryBuilder.generateQuery(childRelationshipName)+'),';
             }
             innerQueryString = innerQueryString.substring(0,innerQueryString.lastIndexOf(','));
         }
@@ -1524,10 +1566,14 @@ public with sharing class SOQLQueryBuilder {
         String parentFieldsString = '';
         if(this.parentQueries.size()>0){
             for(SOQLQueryBuilder parentQueryBuilder:this.parentQueries){
-                String sObjectTypeName = parentQueryBuilder.parentLookupFieldName != null ?
-                        parentQueryBuilder.parentLookupFieldName : convertSObjectTypeNameToParent(parentQueryBuilder.sObjectTypeName);
-
-                Set<String> parentFields = convertFieldsToParentFields(sObjectTypeName,parentQueryBuilder.fields);
+                //get the parent lookup field name
+                String parentSOQLRelationshipName = parentQueryBuilder.parentRelationshipName;
+                if(parentSOQLRelationshipName==null){
+                    parentSOQLRelationshipName = convertParentRelationshipNameToSOQLFormat(
+                            parentQueryBuilder.currentSObjectType.getDescribe().getName());
+                }
+                //convert the fields to SOQL parent query fields
+                Set<String> parentFields = convertFieldsToParentFields(parentSOQLRelationshipName,parentQueryBuilder.fields);
                 parentFieldsString += String.join(new List<String>(parentFields),',')+',';
             }
             parentFieldsString = parentFieldsString.substring(0,parentFieldsString.lastIndexOf(','));
@@ -1601,8 +1647,8 @@ public with sharing class SOQLQueryBuilder {
     private String generateLogicalStatement(String fieldNameId){
         Object value = this.fieldNameValueMap.get(fieldNameId);
         String valueString = '';
-        String openBracket = this.fieldNameOpenBracketMap.get(fieldNameId) == null? ' ': this.fieldNameOpenBracketMap.get(fieldNameId);
-        String closeBracket = this.fieldNameCloseBracketMap.get(fieldNameId) == null? ' ': this.fieldNameCloseBracketMap.get(fieldNameId);
+        String openBracket = this.fieldNameOpenBracketMap.get(fieldNameId) == null? '': this.fieldNameOpenBracketMap.get(fieldNameId);
+        String closeBracket = this.fieldNameCloseBracketMap.get(fieldNameId) == null? '': this.fieldNameCloseBracketMap.get(fieldNameId);
 
         if(value instanceof String){
             valueString = '\''+String.escapeSingleQuotes((String) value)+'\'';
@@ -1651,34 +1697,42 @@ public with sharing class SOQLQueryBuilder {
         return str;
     }
     /**
-     * This method is used to convert the given sObject type name to its parent object type name, if it ends with '__c'.
-     * The 'c' character is removed from the end of the type name and replaced with 'r'.
-     * If the given sObject type name does not end with '__c', it is returned as is.
+     * This method is used to convert the given parent object relationship name to a format that can be use as SOQL query field name,
+     * if it ends with '__c' the 'c' character is removed from the end of the relationship name and replaced with 'r'.
+     * If the given relationship name does not end with '__c', it is returned as is.
+     * @example
+     * parentRelationshipName = 'Account__c'
+     * return = 'Account__r'
      *
-     * @param sObjectTypeName - the sObject type name to be converted
-     * @return the parent sObject type name
+     * @param parentRelationshipName - the parent relationship name to be converted
+     * @return the parent object relationship name in SOQL query format
     */
     @TestVisible
-    private String convertSObjectTypeNameToParent(String sObjectTypeName){
-        String parentsObjectTypeName = sObjectTypeName;
-        if(parentsObjectTypeName.endsWithIgnoreCase('__c')){
-            parentsObjectTypeName = sObjectTypeName.substring(0,sObjectTypeName.lastIndexOfIgnoreCase('c'));
-            parentsObjectTypeName += 'r';
+    private String convertParentRelationshipNameToSOQLFormat(String parentRelationshipName){
+        String parentsObjectRelationshipName = parentRelationshipName;
+        if(parentsObjectRelationshipName.endsWithIgnoreCase('__c')){
+            parentsObjectRelationshipName = parentRelationshipName.substring(0,parentRelationshipName.lastIndexOfIgnoreCase('c'));
+            parentsObjectRelationshipName += 'r';
         }
-        return parentsObjectTypeName;
+        return parentsObjectRelationshipName;
     }
     /**
-     * This method is used to convert a set of field names to their equivalent parent field names.
-     * The parent object type name and the set of field names are given as input parameters.
+     * This method is used to convert a set of parent field names in SOQL query format.
+     * The parent relationship name and the set of field names are given as input parameters.
      *
-     * @param parentsObjectTypeName - the parent object type name
+     * @example
+     * parentRelationshipName = 'Account'
+     * fieldNames = ['Name','Id']
+     * return = ['Account.Name','Account.Id']
+     *
+     * @param parentRelationshipName - the parent object relationship name
      * @param fieldNames - the set of field names to be converted
      * @return the set of parent field names
   */
-   private Set<String> convertFieldsToParentFields(String parentsObjectTypeName,Set<String> fieldNames){
+   private Set<String> convertFieldsToParentFields(String parentRelationshipName,Set<String> fieldNames){
         Set<String> parentFieldNames = new Set<String>();
         for(String fieldName:fieldNames){
-            parentFieldNames.add(parentsObjectTypeName+'.'+fieldName);
+            parentFieldNames.add(parentRelationshipName+'.'+fieldName);
         }
         return parentFieldNames;
     }
@@ -1687,46 +1741,46 @@ public with sharing class SOQLQueryBuilder {
      * including custom fields and the standard fields.
      * If includeLargeText parameter is true, large text fields are also included in the returned list.
      *
-     * @param sObjectTypeName the name of the sObject type to retrieve field names for
+     * @param sObjectType the SObjectType to retrieve field names for
      * @param includeLargeText a Boolean value indicating whether or not to include large text fields
      * @return a List object containing the names of all fields of the specified sObject type
      */
-    public static List<String> getAllFieldNamesForSObjectType(String sObjectTypeName,Boolean includeLargeText){
-        return getFieldNamesForSObject(sObjectTypeName,true,true,includeLargeText);
+    public static List<String> getAllFieldNamesForSObjectType(SObjectType sObjectType,Boolean includeLargeText){
+        return getFieldNamesForSObject(sObjectType,true,true,includeLargeText);
     }
     /**
      * Retrieves the names of all standard fields of an sObject type specified by sObjectType.
      *
-     * @param sObjectType the name of the sObject type to retrieve standard field names for
+     * @param sObjectType the SObjectType to retrieve standard field names for
      * @return a List object containing the names of all standard fields of the specified sObject type
     */
-    public static List<String> getStandardFieldNamesForSObjectType(String sObjectType){
+    public static List<String> getStandardFieldNamesForSObjectType(SObjectType sObjectType){
         return getFieldNamesForSObject(sObjectType,false,true,true);
     }
     /**
      * Retrieves the names of all custom fields of an sObject type specified by sObjectType.
      * If includeLargeText parameter is true, large text fields are also included in the returned list.
      *
-     * @param sObjectType the name of the sObject type to retrieve custom field names for
+     * @param sObjectType the SObjectType type to retrieve custom field names for
      * @param includeLargeText a Boolean value indicating whether or not to include large text fields
      * @return a List object containing the names of all custom fields of the specified sObject type
      */
-    public static List<String> getCustomFieldNamesForSObjectType(String sObjectType,Boolean includeLargeText){
+    public static List<String> getCustomFieldNamesForSObjectType(SObjectType sObjectType,Boolean includeLargeText){
         return getFieldNamesForSObject(sObjectType,true,false,includeLargeText);
     }
     /**
      * Retrieves the list of API names of all fields on the given SObject type that meet the specified criteria.
      *
-     * @param objectType     the name of the SObject type to retrieve fields for
+     * @param sObjectType    the SObjectType type to retrieve fields for
      * @param isCustom       a boolean value indicating whether custom fields should be included in the returned list
      * @param isStandard     a boolean value indicating whether standard fields should be included in the returned list
      * @param includeLargeText a boolean value indicating whether large text (>255) fields should be included in the returned list
      *
      * @return A list of API names of all fields on the given SObject type that meet the specified criteria.
      */
-    public static List<String> getFieldNamesForSObject(String objectType,Boolean isCustom,Boolean isStandard,Boolean includeLargeText){
+    public static List<String> getFieldNamesForSObject(SObjectType sObjectType,Boolean isCustom,Boolean isStandard,Boolean includeLargeText){
         List<String> fieldNames = new List<String>();
-        List<Schema.SObjectField> sObjectFields = getFieldsForSObject(objectType,isCustom,isStandard,includeLargeText);
+        List<Schema.SObjectField> sObjectFields = getFieldsForSObject(sObjectType,isCustom,isStandard,includeLargeText);
 
         for(Schema.SObjectField field: sObjectFields){
             fieldNames.add(field.getDescribe().getName());
@@ -1736,16 +1790,16 @@ public with sharing class SOQLQueryBuilder {
     /**
     * Returns a list of SObject fields for a given SObject type.
     *
-    * @param objectType     the name of the SObject type to retrieve fields for
+    * @param sObjectType    the SObjectType type to retrieve fields for
     * @param isCustom       a boolean value indicating whether custom fields should be included in the returned list
     * @param isStandard     a boolean value indicating whether standard fields should be included in the returned list
     * @param includeLargeText a boolean value indicating whether large text (>255) fields should be included in the returned list
     *
     * @return a list of SObject fields for the given SObject type
     */
-    public static List<SObjectField> getFieldsForSObject(String objectType,Boolean isCustom,Boolean isStandard,Boolean includeLargeText){
+    public static List<SObjectField> getFieldsForSObject(SObjectType sObjectType,Boolean isCustom,Boolean isStandard,Boolean includeLargeText){
         List<Schema.SObjectField> fieldsToReturn = new List<Schema.SObjectField>();
-        List<Schema.SObjectField> sObjectFields = getAllFieldsForSObjectType(objectType);
+        List<Schema.SObjectField> sObjectFields = sObjectType.getDescribe().fields.getMap().values();
 
         for(Schema.SObjectField field: sObjectFields){
             if((isCustom && field.getDescribe().isCustom()) || (isStandard && !field.getDescribe().isCustom())){
@@ -1757,51 +1811,22 @@ public with sharing class SOQLQueryBuilder {
         }
         return fieldsToReturn;
     }
-    /**
-     * Returns all fields for a given SObject type.
-     *
-     * @param sObjectTypeName the name of the SObject type to retrieve fields for
-     *
-     * @return a list of all fields for the given SObject type
-    */
-    public static List<Schema.SObjectField> getAllFieldsForSObjectType(String sObjectTypeName){
-        SObjectType type = Schema.getGlobalDescribe().get(sObjectTypeName);
-        Map<String,Schema.SObjectField> sObjectFields = type.getDescribe().fields.getMap();
 
-        return sObjectFields.values();
-    }
     /**
-     * Returns the name of a child relationship between a parent and child SObject type.
+     * Returns a list of child relationship names between a parent sObject type and a child sObject type.
      *
-     * @param parentSobjectName the name of the parent SObject type
-     * @param childSobjectName  the name of the child SObject type
-     *
-     * @return the name of the child relationship between the parent and child SObject type,
-      *         or null if no such relationship exists
-    */
-    public static String getChildRelationshipName(String parentSobjectName, String childSobjectName) {
-        SObjectType parentsObjType = ((SObject) Type.forName(parentSobjectName).newInstance())
-                .getSObjectType();
-        SObjectType childSObjectType = ((SObject) Type.forName(childSobjectName).newInstance())
-                .getSObjectType();
-        return getChildRelationshipName(parentsObjType,childSObjectType);
-    }
-    /**
-     * Returns the name of a child relationship between a parent and child SObject type.
-     *
-     * @param parentSObjectType the parent SObject type
-     * @param childSObjectType  the child SObject type
-     *
-     * @return the name of the child relationship between the parent and child SObject type,
-      *         or null if no such relationship exists
+     * @param parentSObjectType The type object of the parent sObject.
+     * @param childSObjectType The type object of the child sObject.
+     * @return A list of child relationship names between the two specified sObject types.
      */
-    public static String getChildRelationshipName(SObjectType parentSObjectType, SObjectType childSObjectType) {
+    public static List<String> getChildRelationshipNames(SObjectType parentSObjectType, SObjectType childSObjectType) {
+        List<String> childRelationshipNames = new List<String>();
         for(Schema.ChildRelationship childRelationShip :parentSObjectType.getDescribe().getChildRelationships()){
-            if(childRelationShip.getChildSObject() ==childSObjectType){
-                return childRelationShip.getRelationshipName();
+            if(childRelationShip.getChildSObject() ==childSObjectType && childRelationShip.getRelationshipName() != null){
+                childRelationshipNames.add(childRelationShip.getRelationshipName());
             }
         }
-        return null;
+        return childRelationshipNames;
     }
     /**
      * Returns the specified object if it is not null; otherwise throws an

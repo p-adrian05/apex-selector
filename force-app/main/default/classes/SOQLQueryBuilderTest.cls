@@ -302,7 +302,7 @@ public with sharing class SOQLQueryBuilderTest {
         String actualQueryString = soqlQueryBuilder.toString();
 
         for(Account account: accounts){
-           System.assert(!account.Contacts.isEmpty());
+           Assert.isFalse(account.Contacts.isEmpty());
         }
         Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }
@@ -311,7 +311,8 @@ public with sharing class SOQLQueryBuilderTest {
       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Account.Name})
                 .addInnerQuery(new SOQLQueryBuilder(Contact.getSObjectType())
-                        .selectSpecificFields(new List<SObjectField>{Contact.Name}))
+                        .selectSpecificFields(new List<SObjectField>{Contact.Name})
+                        .setChildRelationshipName('Contacts'))
                 .addInnerQuery(new SOQLQueryBuilder(Contract.getSObjectType())
                         .selectSpecificFields(new List<SObjectField>{Contract.Name}))
                 .whereClause(Contact.Name)
@@ -336,7 +337,7 @@ public with sharing class SOQLQueryBuilderTest {
                         .selectSpecificFields(new List<SObjectField>{Account.Name}))
                  .addParentQuery(new SOQLQueryBuilder(Contact.getSObjectType())
                          .selectSpecificFields(new List<SObjectField>{Contact.Name})
-                         .setParentLookupFieldName('ReportsTo'))
+                         .setParentRelationshipName('ReportsTo'))
                 .whereClause(Contact.LastName)
                 .likeValue('%'+CONTACT_LAST_NAME+'%');
 
@@ -559,18 +560,18 @@ public with sharing class SOQLQueryBuilderTest {
     }
 
     @IsTest
-    public static void testConvertSObjectTypeNameToParent(){
+    public static void testConvertParentLookupFieldNameToSOQLField(){
         SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType());
 
-        String standardObjectNameResult = soqlQueryBuilder.convertSObjectTypeNameToParent('Account');
+        String standardObjectNameResult = soqlQueryBuilder.convertParentRelationshipNameToSOQLFormat('Account');
         System.assertEquals('Account', standardObjectNameResult);
 
-        String customObjectNameResult = soqlQueryBuilder.convertSObjectTypeNameToParent('Custom__c');
+        String customObjectNameResult = soqlQueryBuilder.convertParentRelationshipNameToSOQLFormat('Custom__c');
         System.assertEquals('Custom__r', customObjectNameResult);
     }
     @IsTest
     public static void testGetAllFieldsForSObject() {
-        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', true, true, true);
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject(Account.SObjectType, true, true, true);
 
         Assert.isTrue(fields.size() > 0);
         for (SObjectField field : fields) {
@@ -581,7 +582,7 @@ public with sharing class SOQLQueryBuilderTest {
     }
     @IsTest
     public static void testGetCustomFieldsForSObject() {
-        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', true, false, true);
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject(Account.SObjectType, true, false, true);
 
         for (SObjectField field : fields) {
             Assert.isTrue(field.getDescribe().isCustom());
@@ -589,7 +590,7 @@ public with sharing class SOQLQueryBuilderTest {
     }
     @IsTest
     public static void testGetStandardFieldsForSObject() {
-        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', false, true, true);
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject(Account.SObjectType, false, true, true);
 
         for (SObjectField field : fields) {
             Assert.isTrue(!field.getDescribe().isCustom());
@@ -597,7 +598,7 @@ public with sharing class SOQLQueryBuilderTest {
     }
     @IsTest
     public static void testGetAllFieldsLargeFieldsExcludedFieldsForSObject() {
-        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject('Account', true, true, false);
+        List<SObjectField> fields = SOQLQueryBuilder.getFieldsForSObject(Account.SObjectType, true, true, false);
 
         for (SObjectField field : fields) {
             Assert.isTrue(field.getDescribe().getLength() <= 255);
@@ -605,8 +606,8 @@ public with sharing class SOQLQueryBuilderTest {
     }
     @IsTest
     public static void testGetChildRelationshipNameShouldReturnStringNameOfRelationship() {
-        String relationshipName = SOQLQueryBuilder.getChildRelationshipName(Account.SObjectType, Contact.SObjectType);
-        System.assertEquals('Contacts', relationshipName);
+        List<String> relationshipNames = SOQLQueryBuilder.getChildRelationshipNames(Account.SObjectType, Contact.SObjectType);
+        Assert.isTrue(relationshipNames.size() > 0);
     }
 
 

@@ -177,7 +177,7 @@ Using class also uses addParentQuery method twice which is used to query parent 
                 .selectSpecificFields(new List<SObjectField>{
                         Contact.Name
                 })
-                .setParentLookupFieldName('ReportsTo'))
+                .setParentRelationshipName('ReportsTo'))
         .whereClause(Contact.LastName)
         .likeValue('%' + CONTACT_LAST_NAME + '%');
 

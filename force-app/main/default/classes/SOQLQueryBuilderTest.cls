@@ -291,7 +291,7 @@ public with sharing class SOQLQueryBuilderTest {
                         .likeValue('%'+CONTACT_LAST_NAME+'%')
                         .andCondition(Contact.FirstName)
                         .likeValue('%'+CONTACT_FIRST_NAME+'%'))
-                .whereClause(Contact.Name)
+                .whereClause(Account.Name)
                 .likeValue('%'+ACCOUNT_NAME+'%');
 
         String expectedQueryString = 'SELECT Name,(SELECT LastName,FirstName FROM Contacts WHERE  ' +
@@ -315,7 +315,7 @@ public with sharing class SOQLQueryBuilderTest {
                         .setChildRelationshipName('Contacts'))
                 .addInnerQuery(new SOQLQueryBuilder(Contract.getSObjectType())
                         .selectSpecificFields(new List<SObjectField>{Contract.Name}))
-                .whereClause(Contact.Name)
+                .whereClause(Account.Name)
                 .likeValue('%'+ACCOUNT_NAME+'%');
 
         String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts),(SELECT Name FROM Contracts ) ' +

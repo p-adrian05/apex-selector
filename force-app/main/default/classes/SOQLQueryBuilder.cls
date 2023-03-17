@@ -257,6 +257,7 @@ public with sharing class SOQLQueryBuilder {
         List<String> fieldsString = new List<String>();
         if(fields!=null){
             for(SObjectField field: fields){
+                validateFieldType(field, this.currentSObjectType, ' in selectSpecificFields method!');
                 fieldsString.add(field.getDescribe().getName());
             }
         }
@@ -458,7 +459,8 @@ public with sharing class SOQLQueryBuilder {
      * @return the SOQL query builder with the group by statement
     */
     public SOQLQueryBuilder groupBy(SObjectField field){
-        validateFieldType(field, this.currentSObjectType);
+        requireNonNull(field, 'Field cannot be null in groupBy!');
+        validateFieldType(field, this.currentSObjectType, ' in groupBy method!');
         return groupBy(field.getDescribe().getName());
     }
     /**
@@ -515,6 +517,7 @@ public with sharing class SOQLQueryBuilder {
  */
     public SOQLQueryBuilder orderBy(SObjectField field){
         requireNonNull(field, 'Order By Field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in orderBy method!');
         return orderBy(field.getDescribe().getName());
     }
     /**
@@ -635,6 +638,7 @@ public with sharing class SOQLQueryBuilder {
     */
     public SOQLQueryBuilder whereClause(SObjectField field){
         requireNonNull(field, 'WHERE clause field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in whereClause method!');
         return whereClause(field.getDescribe().getName());
     }
     /**
@@ -675,6 +679,7 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder whereOpenBracket(SObjectField field){
         requireNonNull(field, 'WHERE clause field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in whereOpenBracket method!');
         return whereOpenBracket(field.getDescribe().getName());
     }
     /**
@@ -745,6 +750,7 @@ public with sharing class SOQLQueryBuilder {
    */
     public SOQLQueryBuilder havingClause(SObjectField field){
         requireNonNull(field, 'HAVING clause field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in havingClause method!');
         havingClause(field.getDescribe().getName());
         return this;
     }
@@ -816,6 +822,7 @@ public with sharing class SOQLQueryBuilder {
  */
     public SOQLQueryBuilder havingOpenBracket(SObjectField field){
         requireNonNull(field, 'HAVING clause field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in havingOpenBracket method!');
         havingOpenBracket(field.getDescribe().getName());
         return this;
     }
@@ -862,6 +869,7 @@ public with sharing class SOQLQueryBuilder {
  */
     public SOQLQueryBuilder andCondition(SObjectField field){
         requireNonNull(field, 'AND condition field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in andCondition method!');
         return andCondition(field.getDescribe().getName());
     }
     /**
@@ -906,6 +914,7 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder andOpenBracket(SObjectField field){
         requireNonNull(field, 'AND condition field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in andOpenBracket method!');
         return andOpenBracket(field.getDescribe().getName());
     }
     /**
@@ -954,6 +963,7 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder andCloseBracket(SObjectField field){
         requireNonNull(field, 'AND condition field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in andCloseBracket method!');
         return andCloseBracket(field.getDescribe().getName());
     }
     /**
@@ -1000,6 +1010,7 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder orCondition(SObjectField field){
         requireNonNull(field, 'OR condition field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in orCondition method!');
         return orCondition(field.getDescribe().getName());
     }
     /**
@@ -1045,6 +1056,7 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder orOpenBracket(SObjectField field){
         requireNonNull(field, 'OR condition field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in orOpenBracket method!');
         return orOpenBracket(field.getDescribe().getName());
     }
     /**
@@ -1093,6 +1105,7 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder orCloseBracket(SObjectField field){
         requireNonNull(field, 'OR condition field cannot be null!');
+        validateFieldType(field, this.currentSObjectType, ' in orCloseBracket method!');
         return orCloseBracket(field.getDescribe().getName());
     }
     /**
@@ -1844,6 +1857,22 @@ public with sharing class SOQLQueryBuilder {
         }
         return obj;
     }
-
+    /**
+        * Validates if the SObjectField is of the expected SObjectType.
+        *
+        * @param fieldTypeToCheck The SObjectField to be validated.
+        * @param sobjectTypeToExpect The expected SObjectType.
+        * @param extraMessage The extra message to be included in the exception.
+        * @throws IllegalArgumentException if the SObjectField is not of the expected SObjectType or null.
+      */
+    private void validateFieldType(SObjectField fieldTypeToCheck,SObjectType sobjectTypeToExpect, String extraMessage){
+        String fieldNameSObjectTypeName = fieldTypeToCheck.getDescribe().getSObjectType().getDescribe().getName();
+        String sObjectTypeName = sobjectTypeToExpect.getDescribe().getSObjectType().getDescribe().getName();
+        if(!fieldNameSObjectTypeName.equals(sObjectTypeName)){
+            throw new IllegalArgumentException('Field type is not of type '+sObjectTypeName
+                    +'! Field name: '+fieldTypeToCheck.getDescribe().getName()+
+                    ' Field type: '+fieldTypeToCheck.getDescribe().getSObjectType().getDescribe().getName() +' '+ extraMessage);
+        }
+    }
 
 }

@@ -318,14 +318,14 @@ public with sharing class SOQLQueryBuilderTest {
                 .whereClause(Contact.Name)
                 .likeValue('%'+ACCOUNT_NAME+'%');
 
-        String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts ),(SELECT Name FROM Contracts ) ' +
+        String expectedQueryString = 'SELECT Name,(SELECT Name FROM Contacts),(SELECT Name FROM Contracts ) ' +
                 'FROM Account WHERE   Name LIKE \'%Test account name%\'';
 
         List<Account> accounts = soqlQueryBuilder.getResultList();
         String actualQueryString = soqlQueryBuilder.toString();
 
         for(Account account: accounts){
-            Assert.isTrue(!account.Contacts.isEmpty());
+            Assert.isFalse(account.Contacts.isEmpty());
         }
         Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());
     }

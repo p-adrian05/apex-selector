@@ -73,7 +73,7 @@ public with sharing class SOQLQueryBuilder {
     private List<SOQLQueryBuilder> parentQueries;
     //Name of the parent relationship for the parent fields query
     private String parentRelationshipName;
-    //Name of the child relationship for the child fields query
+    //Name of the child relationship for the child query
     private String childRelationshipName;
 
     private String strWhereStatement;
@@ -180,8 +180,8 @@ public with sharing class SOQLQueryBuilder {
         return this;
     }
     /**
-   * Sets the child relationship name to be used in the SOQL query when adding a related child query and the
-    * and multiple child relationships exist for the same SObject type.
+   * Sets the child relationship name to be used in the SOQL query when adding a related child query.
+    * Have to use if multiple child relationships exist between the parent and child SObject types otherwise not required.
     * @example
     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Account.Name})
@@ -458,7 +458,7 @@ public with sharing class SOQLQueryBuilder {
      * @return the SOQL query builder with the group by statement
     */
     public SOQLQueryBuilder groupBy(SObjectField field){
-        requireNonNull(field, 'Field cannot be null!');
+        validateFieldType(field, this.currentSObjectType);
         return groupBy(field.getDescribe().getName());
     }
     /**
@@ -1521,8 +1521,9 @@ public with sharing class SOQLQueryBuilder {
 
     /**
     * Generates the inner query string the related child queries to be used by the parent SOQL query.
+    *
     * @example (SELECT Name FROM Contacts),(SELECT Name FROM Opportunities)
-     *
+    *
     * @return the related child queries to be used by the parent SOQL query.
     */
     private String generateInnerQueriesString(){
@@ -1544,7 +1545,7 @@ public with sharing class SOQLQueryBuilder {
                                 this.currentSObjectType+' and '+innerQueryBuilder.currentSObjectType +' : '
                                 +childRelationshipFieldNames
                                 +'. Please specify the child relationship name in the query ' +
-                                'using setChildRelationshipName(String childRelationshipName) method.)');
+                                'using setChildRelationshipName(String childRelationshipName) method!');
                     }
                     childRelationshipName = childRelationshipFieldNames.get(0);
                 }
@@ -1843,5 +1844,6 @@ public with sharing class SOQLQueryBuilder {
         }
         return obj;
     }
+
 
 }

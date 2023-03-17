@@ -90,11 +90,8 @@ The whereClause method is used to add a WHERE clause to the query, with a condit
 
 ### Select records with complex conditions
 The whereOpenBracket method is used to open a bracket for a WHERE clause in the query. The likeValue method is then used to add a condition to the WHERE clause that filters for records where the "Name" field contains the value of the variable ACCOUNT_NAME.
-
 The andCloseBracket method is used to close the bracket, and the greaterThan method is used to add another condition to the WHERE clause that filters for records where the "NumberOfEmployees" field is greater than 20.
-
 Then, orCondition is used twice to add conditions that filter the results with lessThan which filters the "NumberOfEmployees" field is less than 10 and equals that filter the "AccountSource" field is equal to 'Web'
-
 Finally, the addLimit method is used to specify that the query should return a maximum of 4 records.
 ```Apex
   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder('Account')
@@ -146,12 +143,17 @@ The havingOpenBracket method is used to filter the records based on the aggregat
 ```
 
 ### Select records with child records
-Using addInnerQuery method twice which is used to query child records through a related object creating new SOQLQueryBuilder instances for them. The first time it's used to add a query for the Contact object, and the second time it's used to query the child records of the Account object with the Case object.
+The addInnerQuery method is used to query child records using the child relationship name and creating new SOQLQueryBuilder instances for them. 
+If no relationships are specified, the SOQLQueryBuilder class automatically will use the only one relationship name,
+otherwise if there are multiple relationships the setChildRelationshipName method is used to specify the child relationship name.
+If multiple relationships are specified, the SOQLQueryBuilder class will throw an exception and have to be specified the child relationship name with the setChildRelationshipName method.
+If only one relationship is specified, the SOQLQueryBuilder class will use it automatically.
 ```Apex
    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
         .selectSpecificFields(new List<SObjectField>{Account.Name})
         .addInnerQuery(new SOQLQueryBuilder(Contact.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{Contact.Name}))
+                .selectSpecificFields(new List<SObjectField>{Contact.Name})
+                .setChildRelationshipName('Contacts'))
         .addInnerQuery(new SOQLQueryBuilder(Case.getSObjectType())
                 .selectSpecificFields(new List<SObjectField>{Case.SuppliedName}))
         .whereClause(Contact.Name)
@@ -162,7 +164,8 @@ Using addInnerQuery method twice which is used to query child records through a 
    'FROM Account WHERE Name LIKE \'%Test account name%\'';
 ```
 ### Select records with parent fields
-Using class also uses addParentQuery method twice which is used to query parent records through a relationship creating new SOQLQueryBuilder instances for them. The first time it's used to add a query for the Account object, and the second time it's used to query the parent records of the Contact object with the ReportsTo relationship.
+The addParentQuery is used to query parent records through a relationship creating new SOQLQueryBuilder instances for them.
+If the parent relationship is not specified, the query will use the SObjectType name as the relationship name otherwise, the setParentRelationshipName method is used to specify the relationship name.
 
 ```Apex
     SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())

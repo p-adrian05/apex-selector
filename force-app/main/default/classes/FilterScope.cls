@@ -1,5 +1,7 @@
 
-
+/**
+    Enums using for USING SCOPE clause of an SOQL query returns records within a specified scope.
+ */
 public enum FilterScope {
     delegated,
     everything,

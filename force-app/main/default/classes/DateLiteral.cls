@@ -1,3 +1,6 @@
+/**
+ * Date literals represent a relative range of time, such as last month, this week, or next year using in SOQL queries.
+ */
 public enum DateLiteral {
     YESTERDAY,
     TODAY,

@@ -71,7 +71,7 @@ public with sharing class SOQLQueryBuilder {
     private List<SOQLQueryBuilder> innerQueries;
     //List to store the parent queries
     private List<SOQLQueryBuilder> parentQueries;
-    //Name of the parent lookup field name  for the parent query if it's not the main SObject type name
+    //Name of the parent lookup field name for the parent fields query if it's not the main SObject type name
     private String parentLookupFieldName;
 
     private String strWhereStatement;

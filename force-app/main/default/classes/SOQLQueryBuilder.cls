@@ -49,20 +49,21 @@ public with sharing class SOQLQueryBuilder {
     private final static String DEFAULT_FIELD = 'Id';
 
     private SObjectType currentSObjectType;
-    //Maps to store the field name and the operator to be used in the query
-    private Map<String,String> fieldNameOperatorMap;
-    //Maps to store the field name and the logical operator to be used in the query
-    private Map<String,String> fieldNameLogicalOperatorMap;
-    //Maps to store the field name and the open bracket to be used in the query
-    private Map<String,String> fieldNameOpenBracketMap;
-    //Maps to store the field name and the close bracket to be used in the query
-    private Map<String,String> fieldNameCloseBracketMap;
+    //Maps to store the FieldNameId and the operator to be used in the query
+    private Map<FieldNameId,String> fieldNameIdOperatorMap;
+    //Maps to store the FieldNameId and the logical operator to be used in the query
+    private Map<FieldNameId,String> fieldNameIdLogicalOperatorMap;
+    //Maps to store the FieldNameId and the open bracket to be used in the query
+    private Map<FieldNameId,String> fieldNameIdOpenBracketMap;
+    //Maps to store the FieldNameId and the close bracket to be used in the query
+    private Map<FieldNameId,String> fieldNameIdCloseBracketMap;
+    //Maps to store the FieldNameId and the value to be used in the query for where clause
+    private Map<FieldNameId,Object> fieldNameIdValueMap;
     //Maps to store the field name and the order to be used in the query
     private Map<String,String> orderByFieldNameOrderMap;
     //Maps to store the field name and the nulls first/last to be used in the query
     private Map<String,String> orderByFieldNameNullsFirstLastMap;
-    //Maps to store the field name and the value to be used in the query for where clause
-    private Map<String,Object> fieldNameValueMap;
+
     //Set to store the fields to be selected in the query
     private Set<String> fields;
     //Set to store the fields to be grouped in the query
@@ -76,7 +77,6 @@ public with sharing class SOQLQueryBuilder {
     //Name of the child relationship for the child query
     private String childRelationshipName;
 
-    private String strWhereStatement;
     private String withStatement;
     private String usingScopeStatement;
     private Integer limitNumber;
@@ -89,9 +89,10 @@ public with sharing class SOQLQueryBuilder {
     private Boolean allRows = false;
 
     private Boolean isWhereStatement = true;
-    private String lastWhereFieldName;
+    private FieldNameId lastWhereFieldNameId;
     private String lastOrderByFieldName;
     private Integer whereFieldNameCounter = 0;
+    private Integer bindValueIndex = 0;
 
     public SOQLQueryBuilder(SObjectType sObjectType){
         requireNonNull(sObjectType, 'SObject type cannot be null!');
@@ -110,11 +111,11 @@ public with sharing class SOQLQueryBuilder {
     }
     private void init(SObjectType currentSObjectType){
         this.currentSObjectType = currentSObjectType;
-        this.fieldNameValueMap = new Map<String,Object>();
-        this.fieldNameOperatorMap = new Map<String,String>();
-        this.fieldNameLogicalOperatorMap = new Map<String,String>();
-        this.fieldNameOpenBracketMap = new Map<String,String>();
-        this.fieldNameCloseBracketMap = new Map<String,String>();
+        this.fieldNameIdValueMap = new Map<FieldNameId,Object>();
+        this.fieldNameIdOperatorMap = new Map<FieldNameId,String>();
+        this.fieldNameIdLogicalOperatorMap = new Map<FieldNameId,String>();
+        this.fieldNameIdOpenBracketMap = new Map<FieldNameId,String>();
+        this.fieldNameIdCloseBracketMap = new Map<FieldNameId,String>();
         this.orderByFieldNameOrderMap = new Map<String,String>();
         this.orderByFieldNameNullsFirstLastMap = new Map<String,String>();
         this.fields = new Set<String>{};
@@ -606,23 +607,6 @@ public with sharing class SOQLQueryBuilder {
         return this;
     }
     /**
-     * Sets the WHERE clause in the SOQL query based on the provided string SOQL where statement.
-     * @example
-     * SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{Account.Name})
-                .whereStatement('Name Like \'%Test account name%\'');
-
-        String expectedQueryString = 'SELECT Name FROM Account  WHERE Name Like \'%Test account name%\'';
-     *
-     * @param whereStatement the string WHERE statement for the SOQL query
-     * @return the SOQLQueryBuilder object with the WHERE statement provided
- */
-    public SOQLQueryBuilder whereStatement(String whereStatement){
-        requireNonNull(whereStatement, 'WHERE statement cannot be null!');
-        this.strWhereStatement = whereStatement;
-        return this;
-    }
-    /**
      * Sets the WHERE clause in the SOQL query based on the provided SObjectField field.
      *
      * @example
@@ -701,8 +685,8 @@ public with sharing class SOQLQueryBuilder {
     public SOQLQueryBuilder whereOpenBracket(String fieldName){
         requireNonNull(fieldName, 'WHERE clause field name cannot be null!');
         this.isWhereStatement = true;
-        String fieldNameId = setLogicalOperator(fieldName,'');
-        this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
+        FieldNameId fieldNameId = setLogicalOperator(fieldName,'');
+        this.fieldNameIdOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
     /**
@@ -797,8 +781,8 @@ public with sharing class SOQLQueryBuilder {
     public SOQLQueryBuilder havingOpenBracket(String fieldName){
         requireNonNull(fieldName, 'HAVING clause field name cannot be null!');
         this.isWhereStatement = false;
-        String fieldNameId = setLogicalOperator(fieldName,'');
-        this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
+        FieldNameId fieldNameId = setLogicalOperator(fieldName,'');
+        this.fieldNameIdOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
     /**
@@ -938,8 +922,8 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder andOpenBracket(String fieldName){
         requireNonNull(fieldName, 'AND condition field name cannot be null!');
-        String fieldNameId = setLogicalOperator(fieldName,OP_AND);
-        this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
+        FieldNameId fieldNameId = setLogicalOperator(fieldName,OP_AND);
+        this.fieldNameIdOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
     /**
@@ -987,8 +971,8 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder andCloseBracket(String fieldName){
         requireNonNull(fieldName, 'AND condition field name cannot be null!');
-        String fieldNameId = setLogicalOperator(fieldName,OP_AND);
-        this.fieldNameCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
+        FieldNameId fieldNameId = setLogicalOperator(fieldName,OP_AND);
+        this.fieldNameIdCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
         return this;
     }
     /**
@@ -1080,8 +1064,8 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder orOpenBracket(String fieldName){
         requireNonNull(fieldName, 'OR condition field name cannot be null!');
-        String fieldNameId = setLogicalOperator(fieldName,OP_OR);
-        this.fieldNameOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
+        FieldNameId fieldNameId = setLogicalOperator(fieldName,OP_OR);
+        this.fieldNameIdOpenBracketMap.put(fieldNameId,OPEN_BRACKET);
         return this;
     }
     /**
@@ -1129,8 +1113,8 @@ public with sharing class SOQLQueryBuilder {
      */
     public SOQLQueryBuilder orCloseBracket(String fieldName){
         requireNonNull(fieldName, 'OR condition field name cannot be null!');
-        String fieldNameId = setLogicalOperator(fieldName,OP_OR);
-        this.fieldNameCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
+        FieldNameId fieldNameId = setLogicalOperator(fieldName,OP_OR);
+        this.fieldNameIdCloseBracketMap.put(fieldNameId,CLOSE_BRACKET);
         return this;
     }
      /**
@@ -1346,97 +1330,181 @@ public with sharing class SOQLQueryBuilder {
         return this;
     }
     /**
-    * Returns the result of the SOQL query as a list of sObjects.
-    *
-    * @return the result of the SOQL query as a list of sObjects
-    */
-    public List<SObject> getResultList(){
-        return Database.query(generateQuery(null));
+     * Returns a list of SObjects based on the specified access level.
+     * @param accessLevel The access level for the query.
+     * @return List of SObjects based on the specified access level.
+     */
+    public List<SObject> getResultList(AccessLevel accessLevel){
+        QueryStringResult queryResult = getQueryStringResult();
+        return Database.queryWithBinds(queryResult.queryString,queryResult.objectBinds,accessLevel);
     }
     /**
-     * Returns the result of the SOQL query as a map of sObjects.
-     * @return  the result of the SOQL query as a map of sObjects
-     * where the key is the Id of the sObject and the value is the sObject itself.
+     * Returns a list of SObjects with Access Level set to SYSTEM_MODE.
+     * @return List of SObjects with access level set to SYSTEM_MODE.
+     */
+    public List<SObject> getResultList(){
+        return getResultList(AccessLevel.SYSTEM_MODE);
+    }
+
+    /**
+     * Returns a map of SObjects based on the specified access level.
+     * @param accessLevel The access level for the query.
+     * @return Map of SObjects based on the specified access level with Id as the key and SObject as the value.
+     */
+    public Map<Id,SObject> getResultMap(AccessLevel accessLevel){
+        return new Map<Id, SObject>(getResultList(accessLevel));
+    }
+    /**
+     * Returns a map of SObjects with Access Level set to SYSTEM_MODE.
+     * @return Map of SObjects with access level set to SYSTEM_MODE.
      */
     public Map<Id,SObject> getResultMap(){
-        return new Map<Id, SObject>(getResultList());
+        return getResultMap(AccessLevel.SYSTEM_MODE);
     }
     /**
-     * Returns the result of the SOQL query as a single sObject.
-     * If the query returns more than one sObject, the first one is returned.
-     *
-     * @return the result of the SOQL query as a single sObject
-     * or null if the query returns no sObject.
+     * Returns a single SObject based on the specified access level.
+     * @param accessLevel The access level for the query.
+     * @return First SObject in the list based on the specified access level or null if the list is empty.
      */
-    public SObject getSingleResult(){
-        List<SObject> sObjects = getResultList();
+    public SObject getSingleResult(AccessLevel accessLevel){
+        List<SObject> sObjects = getResultList(accessLevel);
         return sObjects.size() > 0 ? sObjects.get(0) : null;
     }
     /**
-     * Returns the result of the SOQL query as a single sObject.
-     * If the query returns more than one sObject, the first one is returned.
-     *
-     * @param messageIfNull the message to use in the exception if the query returns no sObject
-     * @return the result of the SOQL query as a single sObject
-     * @throws SObjectException if the query returns no sObject
+     * Returns a single SObject with Access Level set to SYSTEM_MODE.
+     * @return First SObject in the list with access level set to SYSTEM_MODE or null if the list is empty.
      */
-    public SObject getSingleResult(String messageIfNull){
-        requireNonNull(messageIfNull, 'The messageIfNull cannot be null for the getSingleResult method!');
-        List<SObject> sObjects = getResultList();
+    public SObject getSingleResult(){
+        return getSingleResult(AccessLevel.SYSTEM_MODE);
+    }
+    /**
+     * Returns a single SObject based on the specified access level, and throws an exception if the list is empty.
+     * @param messageIfNull Error message to be thrown if list is empty.
+     * @param accessLevel The access level for the query.
+     * @return First SObject in the list based on the specified access level.
+     * @throws SObjectException if the list is empty.
+    */
+    public SObject getSingleResult(String messageIfNull, AccessLevel accessLevel){
+        requireNonNull(messageIfNull, 'The messageIfNull parameter cannot be null for the getSingleResult method!');
+        List<SObject> sObjects = getResultList(accessLevel);
         if(sObjects.size()>0){
             return sObjects.get(0);
         }
         throw new SObjectException(messageIfNull);
     }
+    /**
+     * Returns a single SObject with Access Level set to SYSTEM_MODE, and throws an exception if the list is empty.
+     * @param messageIfNull Error message to be thrown if list is empty.
+     * @return First SObject in the list with access level set to SYSTEM_MODE.
+     * @throws SObjectException if the list is empty.
+     */
+    public SObject getSingleResult(String messageIfNull){
+        return getSingleResult(messageIfNull, AccessLevel.SYSTEM_MODE);
+    }
 
     /**
-     * Returns the number of records returned by the SOQL query
-     * @return the number of records that a dynamic SOQL query would return when executed
-     */
-    public Integer getIntegerResult(){
-        return Database.countQuery(generateQuery(null));
-    }
-    /**
-    * Returns the result of the SOQL query as an array of AggregateResult.
-    *
-    * @return AggregateResult[] the result of the SOQL query
+      * Returns the number of records that a dynamic SOQL query would return when executed with Access Level set to SYSTEM_MODE.
+      * @return An Integer representing total SObjects count with access level set to SYSTEM_MODE.
     */
-    public AggregateResult[] getAggregateResult(){
-        return (AggregateResult[]) Database.query(generateQuery(null));
+    public Integer getIntegerResult(){
+        return getIntegerResult(AccessLevel.SYSTEM_MODE);
     }
     /**
-       * Returns the SOQL query string used to generate the result.
+      * Returns the number of records that a dynamic SOQL query would return when executed.
+      * @param accessLevel The access level for the query.
+      * @return An Integer representing total number of SObjects based on the specified access level.
+      */
+    public Integer getIntegerResult(AccessLevel accessLevel){
+        QueryStringResult queryResult = getQueryStringResult();
+        return Database.countQueryWithBinds(queryResult.queryString,queryResult.objectBinds,accessLevel);
+    }
+    /**
+     * Returns an array of AggregateResult with Access Level set to SYSTEM_MODE.
+     * @return An array of AggregateResult with access level set to SYSTEM_MODE.
+     */
+    public AggregateResult[] getAggregateResult(){
+        return getAggregateResult(AccessLevel.SYSTEM_MODE);
+    }
+    /**
+     * Returns an array of AggregateResult based on the specified access level.
+     * @param accessLevel The access level for the query.
+     * @return An array of AggregateResult based on the specified access level.
+     */
+    public AggregateResult[] getAggregateResult(AccessLevel accessLevel){
+        return (AggregateResult[]) getResultList(accessLevel);
+    }
+
+    /**
+       * Returns the SOQL query string that is used to dynamically query the SObject records.
        *
-       * @return the SOQL query string used to generate the result.
+       * @return the SOQL query string.
     */
     public override String toString(){
+        this.bindValueIndex = 0;
+        return this.generateQuery(null).queryString;
+    }
+    /**
+    * Return the QueryStringResult object that contains the SOQL query string and the bind values for executing the query.
+    * @return QueryStringResult object
+    */
+    public QueryStringResult getQueryStringResult(){
+        this.bindValueIndex = 0;
         return this.generateQuery(null);
     }
-    private String setLogicalOperator(String fieldName,String logicalOperator){
-        String fieldNameId = generateIdFromFieldName(fieldName);
-        this.lastWhereFieldName = fieldNameId;
-        this.fieldNameLogicalOperatorMap.put(fieldNameId,logicalOperator);
+    private FieldNameId setLogicalOperator(String fieldName,String logicalOperator){
+        FieldNameId fieldNameId = generateIdFromFieldName(fieldName);
+        this.lastWhereFieldNameId = fieldNameId;
+        this.fieldNameIdLogicalOperatorMap.put(fieldNameId,logicalOperator);
         return fieldNameId;
     }
     private void setOperator(String operator,Object value){
-        this.fieldNameOperatorMap.put(this.lastWhereFieldName,operator);
-        this.fieldNameValueMap.put(this.lastWhereFieldName,value);
+        this.fieldNameIdOperatorMap.put(this.lastWhereFieldNameId,operator);
+        this.fieldNameIdValueMap.put(this.lastWhereFieldNameId,value);
     }
 
-    private String generateIdFromFieldName(String fieldName){
+    private FieldNameId generateIdFromFieldName(String fieldName){
         Integer counter = this.whereFieldNameCounter++;
         String state = this.isWhereStatement ? WHERE_STR : HAVING_STR;
-        return fieldName+':'+counter+':'+state;
+        return new FieldNameId(fieldName,counter,state);
     }
-    private String extractFieldNameFromId(String idStr){
-        return idStr.substring(0,idStr.indexOf(':'));
+    class FieldNameId{
+        final String fieldName;
+        final Integer counter;
+        final String state;
+
+        FieldNameId(String fieldName,Integer counter,String state){
+            this.fieldName = fieldName;
+            this.counter = counter;
+            this.state = state;
+        }
+        public Boolean equals(Object obj){
+            if(obj instanceof FieldNameId){
+                FieldNameId other = (FieldNameId)obj;
+                return this.fieldName.equals(other.fieldName)
+                        && this.counter == other.counter
+                        && this.state.equals(other.state);
+            }
+            return false;
+        }
+        public Integer hashCode(){
+            return (fieldName != null ? fieldName.hashCode() : 0) ^
+                    (counter != null ? counter : 0) ^
+                    (state != null ? state.hashCode() : 0);
+        }
     }
+
     /**
-     * Generates and returns the final SOQL query string based on the criteria set in the query builder object.
+     * Generates and returns the final QueryStringResult based on the criteria set in the query builder object.
+     * @example 'SELECT Name,AccountSource,NumberOfEmployees FROM Account WHERE ' +
+                ' (Name LIKE :value0 AND NumberOfEmployees > :value1) ' +
+                'OR NumberOfEmployees < :value2 OR AccountSource = :value3'
+
+     *  Map<String,Object> objectBinds = new Map<String,Object>{'value0' => '%'+ACCOUNT_NAME+'%','value1' => 20,'value2' => 10,'value3' => 'Web'};
+     *
      * @param childRelationshipName Optional parameter, if specified, will override the sObject type name for the FROM clause in the query.
-     * @return The final SOQL query string.
-  */
-    private String generateQuery(String childRelationshipName){
+     * @return The final QueryStringResult object containing the final SOQL query string and the bind values.
+    */
+    private QueryStringResult generateQuery(String childRelationshipName){
         //the query string is built based on the sObject type name
         //or if the child relationship name specified it is building as an inner child query
         String sObjectTypeNameInQuery = childRelationshipName!=null ? childRelationshipName : this.currentSObjectType.getDescribe().getName();
@@ -1449,29 +1517,30 @@ public with sharing class SOQLQueryBuilder {
         String allRowsStatement = this.allRows ? ALL_ROWS_STR : '';
         String offsetStatement = this.offsetNumber!=null ? OFFSET_STR+' '+this.offsetNumber: '';
         String groupByStatement = this.groupByFields.size()>0 ? GROUP_BY_STR+' '+String.join(new List<String>(this.groupByFields),','): '';
-        String strCustomWhereStatement = this.strWhereStatement !=null ? this.strWhereStatement : '';
         String withStatement = this.withStatement !=null ? WITH_STR+' '+this.withStatement : '';
         String usingScopeStatement = this.usingScopeStatement !=null ? USING_SCOPE_STR+' '+this.usingScopeStatement : '';
         //generate the inner related child queries
-        String innerQueryString = generateInnerQueriesString();
+        QueryStringResult innerQueryResult = generateInnerQueriesString(this.innerQueries);
         //generate the related parent fields
-        String parentFields = generateParentFields();
+        String parentFields = generateParentFields(parentQueries);
         //generate the where statement
-        String whereStatement = generateWhereStatement();
+        LogicalOperatorStatement whereStatement = generateWhereStatement(this.fieldNameIdValueMap);
         //generate the having statement
-        String havingStatement = generateHavingStatement();
+        LogicalOperatorStatement havingStatement = generateHavingStatement(this.fieldNameIdValueMap);
         //generate the order by statement
-        String orderByStatement = generateOrderStatement();
+        String orderByStatement = generateOrderStatement(this.orderByFieldNameOrderMap,this.orderByFieldNameNullsFirstLastMap);
+        Map<String,Object> objectBinds = new Map<String,Object>();
 
         //if no fields are specified, add the default field
         if(this.fields.size()==0){
             this.fields.add(DEFAULT_FIELD);
         }
-        //
+
         String queryStatement = SELECT_STR+' '+String.join(new List<String>(this.fields),',');
 
-        if(innerQueryString.length()>0){
-            queryStatement+=','+innerQueryString;
+        if(innerQueryResult.queryString.length()>0){
+            queryStatement+=','+innerQueryResult.queryString;
+            objectBinds.putAll(innerQueryResult.objectBinds);
         }
         if(parentFields.length()>0){
             queryStatement+= ','+parentFields;
@@ -1479,14 +1548,9 @@ public with sharing class SOQLQueryBuilder {
         //add the from clause
         queryStatement +=' '+ FROM_STR+' '+ sObjectTypeNameInQuery;
 
-        if(whereStatement.length()>0){
-            queryStatement += ' '+whereStatement;
-        }
-        if(strCustomWhereStatement.length()>0){
-            if(whereStatement.isWhitespace()){
-                strCustomWhereStatement = ' '+WHERE_STR+' '+strCustomWhereStatement;
-            }
-            queryStatement += ' '+strCustomWhereStatement;
+        if(whereStatement.logicalOperatorStatement.length()>0){
+            queryStatement += ' '+whereStatement.logicalOperatorStatement;
+            objectBinds.putAll(whereStatement.objectBinds);
         }
         if(usingScopeStatement.length()>0){
             queryStatement += ' '+usingScopeStatement;
@@ -1497,8 +1561,9 @@ public with sharing class SOQLQueryBuilder {
         if(groupByStatement.length()>0){
             queryStatement += ' '+groupByStatement;
         }
-        if(havingStatement.length()>0){
-            queryStatement += ' '+havingStatement;
+        if(havingStatement.logicalOperatorStatement.length()>0){
+            queryStatement += ' '+havingStatement.logicalOperatorStatement;
+            objectBinds.putAll(havingStatement.objectBinds);
         }
         if(orderByStatement.length()>0){
             queryStatement += ' '+orderByStatement;
@@ -1529,45 +1594,79 @@ public with sharing class SOQLQueryBuilder {
         }
         queryStatement +=' ';
         System.debug(queryStatement);
-        return queryStatement;
+        return new QueryStringResult(queryStatement, objectBinds);
     }
-
+    public class QueryStringResult {
+        public final Map<String, Object> objectBinds;
+        public final String queryString;
+        QueryStringResult(String queryString, Map<String, Object> objectBinds) {
+            this.queryString = queryString;
+            this.objectBinds = objectBinds;
+        }
+    }
     /**
-    * Generates the inner query string the related child queries to be used by the parent SOQL query.
-    *
-    * @example (SELECT Name FROM Contacts),(SELECT Name FROM Opportunities)
-    *
-    * @return the related child queries to be used by the parent SOQL query.
+     * Generates the inner query string for a list of SOQLQueryBuilder objects
+     *
+     * @example (SELECT Id,Name FROM Account WHERE Id =: value0),(SELECT Id,Name FROM Contact)
+     * @param innerQueries a list of SOQLQueryBuilder objects representing the inner queries
+     * @return QueryStringResult object containing the inner query string and the bind values
     */
-    private String generateInnerQueriesString(){
+    private QueryStringResult generateInnerQueriesString(List<SOQLQueryBuilder> innerQueries){
         String innerQueryString = '';
-        if(this.innerQueries.size()>0){
+        Map<String,Object> objectBinds = new Map<String,Object>();
+        SOQLQueryBuilder actualInnerQueryBuilder;
+        if(innerQueries!=null && innerQueries.size()>0){
             for(SOQLQueryBuilder innerQueryBuilder:innerQueries){
-                //if the child relationship name is not specified, try to find it automatically
-                String childRelationshipName = innerQueryBuilder.childRelationshipName;
-                if(childRelationshipName==null){
-                    List<String> childRelationshipFieldNames = getChildRelationshipNames(
-                            this.currentSObjectType,innerQueryBuilder.currentSObjectType);
-
-                    if(childRelationshipFieldNames.isEmpty()){
-                        throw new SObjectException('No child relationship found between '+
-                                this.currentSObjectType+' and '+innerQueryBuilder.currentSObjectType);
-                    }
-                    if(childRelationshipFieldNames.size()>1){
-                        throw new SObjectException('Multiple child relationships found between '+
-                                this.currentSObjectType+' and '+innerQueryBuilder.currentSObjectType +' : '
-                                +childRelationshipFieldNames
-                                +'. Please specify the child relationship name in the query ' +
-                                'using setChildRelationshipName(String childRelationshipName) method!');
-                    }
-                    childRelationshipName = childRelationshipFieldNames.get(0);
+                //set the bind value index for indexing the bind values globally
+                if(actualInnerQueryBuilder!=null){
+                    innerQueryBuilder.bindValueIndex = actualInnerQueryBuilder.bindValueIndex++;
+                }else{
+                    innerQueryBuilder.bindValueIndex = 0;
                 }
+                actualInnerQueryBuilder = innerQueryBuilder;
+
                 //add the child query to the inner query string
-                innerQueryString += '('+innerQueryBuilder.generateQuery(childRelationshipName)+'),';
+                QueryStringResult innerQueryResult = generateInnerQueryString(innerQueryBuilder);
+                innerQueryString += '('+innerQueryResult.queryString+'),';
+                objectBinds.putAll(innerQueryResult.objectBinds);
             }
+            //set the bind value index to the bind value index of the last inner query builder
+            //to continue the bind value indexing from there
+            this.bindValueIndex = actualInnerQueryBuilder.bindValueIndex++;
             innerQueryString = innerQueryString.substring(0,innerQueryString.lastIndexOf(','));
         }
-        return innerQueryString;
+        return new QueryStringResult(innerQueryString, objectBinds);
+    }
+    /**
+     * Generates a QueryStringResult object for the given SOQLQueryBuilder's child relationship name,
+     * automatically finding it if not specified.
+     *
+     * @example (SELECT Id,Name FROM Account WHERE Id =: value0)
+     * @param innerQueryBuilder the SOQLQueryBuilder object being used.
+     * @return a QueryStringResult object containing the generated query string and the bind values.
+     * @throws SObjectException if no child relationship is found or multiple child relationships are found
+    */
+    private QueryStringResult generateInnerQueryString(SOQLQueryBuilder innerQueryBuilder){
+        //if the child relationship name is not specified, try to find it automatically
+        String childRelationshipName = innerQueryBuilder.childRelationshipName;
+        if(childRelationshipName==null){
+            List<String> childRelationshipFieldNames = getChildRelationshipNames(
+                    this.currentSObjectType,innerQueryBuilder.currentSObjectType);
+
+            if(childRelationshipFieldNames.isEmpty()){
+                throw new SObjectException('No child relationship found between '+
+                        this.currentSObjectType+' and '+innerQueryBuilder.currentSObjectType);
+            }
+            if(childRelationshipFieldNames.size()>1){
+                throw new SObjectException('Multiple child relationships found between '+
+                        this.currentSObjectType+' and '+innerQueryBuilder.currentSObjectType +' : '
+                        +childRelationshipFieldNames
+                        +'. Please specify the child relationship name in the query ' +
+                        'using setChildRelationshipName(String childRelationshipName) method!');
+            }
+            childRelationshipName = childRelationshipFieldNames.get(0);
+        }
+        return innerQueryBuilder.generateQuery(childRelationshipName);
     }
     /**
      * Generates the representation of related parent query fields by iterating over
@@ -1576,10 +1675,10 @@ public with sharing class SOQLQueryBuilder {
      *
      * @return a string containing the parent fields separated by commas
      */
-    private String generateParentFields(){
+    private String generateParentFields(List<SOQLQueryBuilder> parentQueries){
         String parentFieldsString = '';
-        if(this.parentQueries.size()>0){
-            for(SOQLQueryBuilder parentQueryBuilder:this.parentQueries){
+        if(parentQueries!=null && parentQueries.size()>0){
+            for(SOQLQueryBuilder parentQueryBuilder:parentQueries){
                 //get the parent lookup field name
                 String parentSOQLRelationshipName = parentQueryBuilder.parentRelationshipName;
                 if(parentSOQLRelationshipName==null){
@@ -1594,41 +1693,43 @@ public with sharing class SOQLQueryBuilder {
         }
         return parentFieldsString;
     }
+    private LogicalOperatorStatement generateWhereStatement(Map<FieldNameId,Object> fieldNameIdValueMap){
+        return generateLogicalOperatorStatement(fieldNameIdValueMap,WHERE_STR);
+    }
+    private LogicalOperatorStatement generateHavingStatement(Map<FieldNameId,Object> fieldNameIdValueMap){
+        return generateLogicalOperatorStatement(fieldNameIdValueMap,HAVING_STR);
+    }
     /**
-     * Builds a SQL WHERE statement based on the field names and values stored in the fieldNameValueMap.
-     * @example WHERE Name = 'John' AND Age = 30
-     * @return a string containing the WHERE statement with logical operators and values.
+    *  Generates a logical operator statement based on the provided map of FieldNameId objects and their corresponding values,
+     * and a statement operator (WHERE or HAVING).
+     *
+    * @param fieldNameIdValueMap a map of FieldNameId objects and their corresponding values.
+    * @param statementOperator the statement operator to use in the logical operator statement (WHERE or HAVING).
+    * @return a LogicalOperatorStatement object containing the logical operator statement such as WHERE Name = :value0 AND Age = :value1
+     * and a Map of bind variables and corresponding values.
     */
-    private String generateWhereStatement(){
-        return generateLogicalOperatorStatement(WHERE_STR);
-    }
-    /**
-     * Builds a SQL HAVING statement based on the field names and values stored in the fieldNameValueMap.
-     * @example HAVING COUNT(Name) > 10
-     * @return a string containing the HAVING statement with logical operators and values.
-     */
-    private String generateHavingStatement(){
-        return generateLogicalOperatorStatement(HAVING_STR);
-    }
-    /**
-     * Builds a logical SQL operator statement (i.e. WHERE or HAVING) based on the given statementOperator
-     * and the field names and values stored in the fieldNameValueMap.
-     *
-     * @param statementOperator a string containing the SQL logical operator. Must be either "WHERE" or "HAVING".
-     *
-     * @return a string containing the logical operator statement with conditions and values.
-     */
-    private String generateLogicalOperatorStatement(String statementOperator){
-        String stringStatement = '';
-        if(fieldNameValueMap.keySet().size()>0){
-            for(String fieldNameId : fieldNameValueMap.keySet()){
-                if(fieldNameId.endsWithIgnoreCase(statementOperator)){
-                    stringStatement += generateLogicalStatement(fieldNameId);
+    private LogicalOperatorStatement generateLogicalOperatorStatement(Map<FieldNameId,Object> fieldNameIdValueMap,String statementOperator){
+        String logicalOperatorStatement = '';
+        Map<String,Object> objectBinds = new Map<String,Object>();
+        if(fieldNameIdValueMap.keySet().size()>0){
+            for(FieldNameId fieldNameId : fieldNameIdValueMap.keySet()){
+                if(fieldNameId.state.endsWithIgnoreCase(statementOperator)){
+                    LogicalStatement logicalStatement = generateLogicalStatement(fieldNameId);
+                    logicalOperatorStatement += logicalStatement.logicalStatement;
+                    objectBinds.put(logicalStatement.bindValueKey,logicalStatement.value);
                 }
             }
-            stringStatement = stringStatement.length()>0 ? statementOperator+' '+ stringStatement: '';
+            logicalOperatorStatement = logicalOperatorStatement.length()>0 ? statementOperator+' '+ logicalOperatorStatement: '';
         }
-        return stringStatement;
+        return new LogicalOperatorStatement(logicalOperatorStatement,objectBinds);
+    }
+    class LogicalOperatorStatement{
+        final String logicalOperatorStatement;
+        final Map<String,Object> objectBinds;
+        LogicalOperatorStatement(String logicalOperatorStatement, Map<String,Object> objectBinds){
+            this.logicalOperatorStatement = logicalOperatorStatement;
+            this.objectBinds = objectBinds;
+        }
     }
     /**
      * Generates an SQL ORDER BY statement based on the keys and values of the map
@@ -1639,11 +1740,14 @@ public with sharing class SOQLQueryBuilder {
      *
      * @return an SQL ORDER BY statement as a String.
     */
-    private String generateOrderStatement(){
+    private String generateOrderStatement(Map<String,String> orderByFieldNameOrderMap,
+                                          Map<String,String> orderByFieldNameNullsFirstLastMap){
         String orderStatement = orderByFieldNameOrderMap.keySet().size()>0 ? ORDER_BY_STR+' ': '';
         if(orderByFieldNameOrderMap.keySet().size()>0){
             for(String fieldName: orderByFieldNameOrderMap.keySet()){
-                String nullsLastFirst = orderByFieldNameNullsFirstLastMap.get(fieldName) == null ? '':orderByFieldNameNullsFirstLastMap.get(fieldName);
+                String nullsLastFirst = orderByFieldNameNullsFirstLastMap.get(fieldName) == null ? ''
+                                        :orderByFieldNameNullsFirstLastMap.get(fieldName);
+
                 String orderStr = orderByFieldNameOrderMap.get(fieldName);
                 orderStatement += fieldName +' '+orderStr +' '+nullsLastFirst+', ';
             }
@@ -1652,63 +1756,52 @@ public with sharing class SOQLQueryBuilder {
         return orderStatement;
     }
     /**
-     * Generates a logical statement for a given field name ID.
+     * Generates a logical statement for a given FieldNameId object
      *
-     * @param fieldNameId the field name ID for which to generate the logical statement
-     * @return a logical statement as a String using the value, operator, and brackets defined in the fieldNameValueMap, fieldNameOperatorMap,
-     *         fieldNameOpenBracketMap, and fieldNameCloseBracketMap instance variables
+     * @param fieldNameId the FieldNameId object for which to generate the logical statement
+     * @return a LogicalStatement object containing value, operator, logical operator,
+     * bind value key and logical statement string such as 'Name = :value1 AND Age = :value2'
      */
-    private String generateLogicalStatement(String fieldNameId){
-        Object value = this.fieldNameValueMap.get(fieldNameId);
-        String valueString = '';
-        String openBracket = this.fieldNameOpenBracketMap.get(fieldNameId) == null? '': this.fieldNameOpenBracketMap.get(fieldNameId);
-        String closeBracket = this.fieldNameCloseBracketMap.get(fieldNameId) == null? '': this.fieldNameCloseBracketMap.get(fieldNameId);
+    private LogicalStatement generateLogicalStatement(FieldNameId fieldNameId){
+        Object value = this.fieldNameIdValueMap.get(fieldNameId);
+        String bindValueKey = 'value'+this.bindValueIndex++;
+        String operator = fieldNameIdOperatorMap.get(fieldNameId);
+        String logicalOperator = fieldNameIdLogicalOperatorMap.get(fieldNameId);
 
-        if(value instanceof String){
-            valueString = '\''+String.escapeSingleQuotes((String) value)+'\'';
-        }else if(value instanceof List<Object>){
-            valueString = convertListToString((List<Object>) value);
-        }else if(value instanceof Datetime){
-            valueString = ((Datetime) value).formatGmt('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'');
-        }
-        else{
-            valueString = String.valueOf(value);
-        }
-        String operator = fieldNameOperatorMap.get(fieldNameId);
+        String openBracket = this.fieldNameIdOpenBracketMap.get(fieldNameId) == null? ''
+                                : this.fieldNameIdOpenBracketMap.get(fieldNameId);
+        String closeBracket = this.fieldNameIdCloseBracketMap.get(fieldNameId) == null? ''
+                                : this.fieldNameIdCloseBracketMap.get(fieldNameId);
+        String logicalStatement = '';
+
         if(operator.equals(OP_NOT_LIKE)){
-            return fieldNameLogicalOperatorMap.get(fieldNameId)+' '
-                    +openBracket+'('+ 'NOT '+extractFieldNameFromId(fieldNameId) +' '
-                    +'LIKE'
-                    +valueString+') '+closeBracket+' ';
+            logicalStatement = logicalOperator+' '
+                    +openBracket+'('+ 'NOT '+fieldNameId.fieldName +' '
+                    +'LIKE '
+                    +':'+bindValueKey+') '+closeBracket+' ';
         }else{
-            return fieldNameLogicalOperatorMap.get(fieldNameId)+' '
-                    +openBracket+ extractFieldNameFromId(fieldNameId) +' '
+            logicalStatement = logicalOperator+' '
+                    +openBracket+ fieldNameId.fieldName +' '
                     +operator+' '
-                    +valueString+closeBracket+' ';
+                    +':'+bindValueKey+closeBracket+' ';
         }
+        return new LogicalStatement(value, operator, logicalOperator, bindValueKey, logicalStatement);
     }
-    /**
-     * Converts a List of Objects to a String representation to be used in a SOQL query.
-     *
-     * @param objects the List of Objects to convert
-     * @return a String representation of the List, in the format '(obj1, obj2, ..., objN)'
-    */
-    private String convertListToString(List<Object> objects){
-        String str = OPEN_BRACKET;
-        for(Object obj:objects){
-            if(obj instanceof String){
-                str += '\''+String.escapeSingleQuotes((String) obj)+'\',';
-            }else if(obj instanceof Datetime){
-                str += ((Datetime) obj).formatGmt('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'')+',';
-            }else{
-                str += obj+',';
-            }
+    class LogicalStatement{
+        final Object value;
+        final String operator;
+        final String logicalOperator;
+        final String bindValueKey;
+        final String logicalStatement;
+
+        LogicalStatement(Object value, String operator, String logicalOperator, String bindValueKey, String logicalStatement){
+            this.value = value;
+            this.operator = operator;
+            this.logicalOperator = logicalOperator;
+            this.bindValueKey = bindValueKey;
+            this.logicalStatement = logicalStatement;
         }
-        if(objects.size()>0){
-            str = str.substring(0,str.lastIndexOf(','));
-        }
-        str += CLOSE_BRACKET;
-        return str;
+
     }
     /**
      * This method is used to convert the given parent object relationship name to a format that can be use as SOQL query field name,

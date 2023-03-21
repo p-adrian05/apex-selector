@@ -2,9 +2,11 @@
 
 Provides a flexible and dynamic extensible Repository layer for SObjects.
 
+NEW: Using the new Database.queryWithBinds method for dynamic variable binding
+
 A repository layer is a design pattern in software architecture that provides an abstraction between the data access code and the rest of the application. The repository pattern allows for the encapsulation of data access logic. It help to maintain the clean separation of concerns between the business logic and data access logic making the codebase more robust and maintainable.
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YynIQAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YytWQAS">
 <img alt="Deploy to Salesforce"
 src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
@@ -42,9 +44,9 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 ## Examples
 
 ### Select a record by ID
-The selectStandardFields method is used to retrieve all the standard fields for the Account object. This will include all the fields that come out of the box for an Account object in Salesforce.
+- The selectStandardFields method is used to retrieve all the standard fields for the Account object. This will include all the fields that come out of the box for an Account object in Salesforce.
 
-The whereClause method is used to add a WHERE clause to the query, with a condition that filters the results to only include records where the "Id" field is equal to the variable 'id'.
+- The whereClause method is used to add a WHERE clause to the query, with a condition that filters the results to only include records where the "Id" field is equal to the variable 'id'.
 
 ```Apex
   SOQLQueryBuilder accountQuery = new SOQLQueryBuilder(Account.getSObjectType())
@@ -89,10 +91,10 @@ The whereClause method is used to add a WHERE clause to the query, with a condit
 ```
 
 ### Select records with complex conditions
-The whereOpenBracket method is used to open a bracket for a WHERE clause in the query. The likeValue method is then used to add a condition to the WHERE clause that filters for records where the "Name" field contains the value of the variable ACCOUNT_NAME.
-The andCloseBracket method is used to close the bracket, and the greaterThan method is used to add another condition to the WHERE clause that filters for records where the "NumberOfEmployees" field is greater than 20.
-Then, orCondition is used twice to add conditions that filter the results with lessThan which filters the "NumberOfEmployees" field is less than 10 and equals that filter the "AccountSource" field is equal to 'Web'
-Finally, the addLimit method is used to specify that the query should return a maximum of 4 records.
+- The whereOpenBracket method is used to open a bracket for a WHERE clause in the query. The likeValue method is then used to add a condition to the WHERE clause that filters for records where the "Name" field contains the value of the variable ACCOUNT_NAME.
+- The andCloseBracket method is used to close the bracket, and the greaterThan method is used to add another condition to the WHERE clause that filters for records where the "NumberOfEmployees" field is greater than 20.
+- Then, orCondition is used twice to add conditions that filter the results with lessThan which filters the "NumberOfEmployees" field is less than 10 and equals that filter the "AccountSource" field is equal to 'Web'
+- Finally, the addLimit method is used to specify that the query should return a maximum of 4 records.
 ```Apex
   SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder('Account')
         .selectSpecificFields(new List<SObjectField>{Account.Name,
@@ -112,9 +114,9 @@ Finally, the addLimit method is used to specify that the query should return a m
     'OR  AccountSource = \'Web\'   LIMIT 4';
 ```
 ### Select records with group by and having statements
-First, it creates an instance of the SOQLFunction class, representing COUNT function that can be used in a SOQL query. The countFunction will return the count of the Id field for all returned records.
-The groupBy method is used to group the query results by the AccountSource field.
-The havingOpenBracket method is used to filter the records based on the aggregate function (COUNT) results and open a bracket.
+- First, it creates an instance of the SOQLFunction class, representing COUNT function that can be used in a SOQL query. The countFunction will return the count of the Id field for all returned records.
+- The groupBy method is used to group the query results by the AccountSource field.
+- The havingOpenBracket method is used to filter the records based on the aggregate function (COUNT) results and open a bracket.
 ```Apex
    SOQLFunction countFunction = SOQLFunction.of(SOQLFunction.FunctionName.COUNT,Account.Id);
    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
@@ -143,11 +145,11 @@ The havingOpenBracket method is used to filter the records based on the aggregat
 ```
 
 ### Select records with child records
-The addInnerQuery method is used to query child records using the child relationship name and creating new SOQLQueryBuilder instances for them. 
-If no relationships are specified, the SOQLQueryBuilder class automatically will use the only one relationship name,
+- The addInnerQuery method is used to query child records using the child relationship name and creating new SOQLQueryBuilder instances for them. 
+- If no relationships are specified, the SOQLQueryBuilder class automatically will use the only one relationship name,
 otherwise if there are multiple relationships the setChildRelationshipName method is used to specify the child relationship name.
-If multiple relationships are specified, the SOQLQueryBuilder class will throw an exception and have to be specified the child relationship name with the setChildRelationshipName method.
-If only one relationship is specified, the SOQLQueryBuilder class will use it automatically.
+- If multiple relationships are specified, the SOQLQueryBuilder class will throw an exception and have to be specified the child relationship name with the setChildRelationshipName method.
+- If only one relationship is specified, the SOQLQueryBuilder class will use it automatically.
 ```Apex
    SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
         .selectSpecificFields(new List<SObjectField>{Account.Name})
@@ -164,8 +166,8 @@ If only one relationship is specified, the SOQLQueryBuilder class will use it au
    'FROM Account WHERE Name LIKE \'%Test account name%\'';
 ```
 ### Select records with parent fields
-The addParentQuery is used to query parent records through a relationship creating new SOQLQueryBuilder instances for them.
-If the parent relationship is not specified, the query will use the SObjectType name as the relationship name otherwise, the setParentRelationshipName method is used to specify the relationship name.
+- The addParentQuery is used to query parent records through a relationship creating new SOQLQueryBuilder instances for them.
+- If the parent relationship is not specified, the query will use the SObjectType name as the relationship name otherwise, the setParentRelationshipName method is used to specify the relationship name.
 
 ```Apex
     SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
@@ -189,9 +191,9 @@ If the parent relationship is not specified, the query will use the SObjectType 
 ```
 
 ### Select records with order by statements
-The orderBy method is used to sort the records by a certain field. in this example, the query will first sort the records by the "Name" field in ascending order with the nulls first and then by the "NumberOfEmployees" field in descending order with the nulls last.
+- The orderBy method is used to sort the records by a certain field. in this example, the query will first sort the records by the "Name" field in ascending order with the nulls first and then by the "NumberOfEmployees" field in descending order with the nulls last.
 
-The methods ascending() and descending() specify the sort direction, while the nullsFirst() and nullsLast() specifies the null values handling.
+- The methods ascending() and descending() specify the sort direction, while the nullsFirst() and nullsLast() specifies the null values handling.
 ```Apex
       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())
         .selectSpecificFields(new List<SObjectField>{Account.Name,
@@ -206,13 +208,13 @@ The methods ascending() and descending() specify the sort direction, while the n
         'ORDER BY Name ASC NULLS FIRST, NumberOfEmployees DESC NULLS LAST';
 ```
 ### Select records with nested functions
-First, it creates three instances of the SOQLFunction class, representing three different functions-
-The convertTimeZoneFunction will convert the Opportunity's CreatedDate to the user's time zone.
-The hourInDayFunction will return the hour of the day as an integer for the converted time.
-The sumAmountFunction will return the sum of the Amount field for all returned records.
+- First, it creates three instances of the SOQLFunction class, representing three different functions-
+- The convertTimeZoneFunction will convert the Opportunity's CreatedDate to the user's time zone.
+- The hourInDayFunction will return the hour of the day as an integer for the converted time.
+- The sumAmountFunction will return the sum of the Amount field for all returned records.
 
-Then, the addFunction method is used to add the function to the query twice, the first one is hourInDayFunction and second is sumAmountFunction.
-Finally, the groupBy method is used to group the query results by the hour of the day (hourInDayFunction) returned by the query.
+- Then, the addFunction method is used to add the function to the query twice, the first one is hourInDayFunction and second is sumAmountFunction.
+- Finally, the groupBy method is used to group the query results by the hour of the day (hourInDayFunction) returned by the query.
 ```Apex
    SOQLFunction convertTimeZoneFunction = SOQLFunction.of(SOQLFunction.FunctionName.convertTimezone,
         Opportunity.CreatedDate);

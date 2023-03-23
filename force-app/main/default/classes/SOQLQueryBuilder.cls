@@ -1679,19 +1679,46 @@ public with sharing class SOQLQueryBuilder {
         String parentFieldsString = '';
         if(parentQueries!=null && parentQueries.size()>0){
             for(SOQLQueryBuilder parentQueryBuilder:parentQueries){
-                //get the parent lookup field name
-                String parentSOQLRelationshipName = parentQueryBuilder.parentRelationshipName;
-                if(parentSOQLRelationshipName==null){
-                    parentSOQLRelationshipName = convertParentRelationshipNameToSOQLFormat(
-                            parentQueryBuilder.currentSObjectType.getDescribe().getName());
-                }
+                //get the parent lookup field name and the parent query builder fields
+                ParentQueryTraverseResult parentQueryTraverseResult = traverseParentQueryBuilder(parentQueryBuilder);
+                String parentSOQLRelationshipName = parentQueryTraverseResult.parentSOQLRelationshipName;
+                Set<String> parentQueryBuilderFields = parentQueryTraverseResult.parentQueryBuilder.fields;
                 //convert the fields to SOQL parent query fields
-                Set<String> parentFields = convertFieldsToParentFields(parentSOQLRelationshipName,parentQueryBuilder.fields);
-                parentFieldsString += String.join(new List<String>(parentFields),',')+',';
+                Set<String> parentSOQLFields = convertFieldsToParentFields(parentSOQLRelationshipName,parentQueryBuilderFields);
+                parentFieldsString += String.join(new List<String>(parentSOQLFields),',')+',';
             }
             parentFieldsString = parentFieldsString.substring(0,parentFieldsString.lastIndexOf(','));
         }
         return parentFieldsString;
+    }
+    /**
+     * Traverses the parent query builder and generates relationship name for SOQL query.
+     * @example for parentSOQLRelationshipName: ReportsTo.Account.Name
+     *
+     * @param parentQueryBuilder Starter Query builder object to traverse from to get the deepest parent query builder.
+     * @return The ParentQueryTraverseResult containing the relationship name and deepest parent query builder.
+     */
+    private ParentQueryTraverseResult traverseParentQueryBuilder(SOQLQueryBuilder parentQueryBuilder){
+        SOQLQueryBuilder actualParentQueryBuilder = parentQueryBuilder;
+        String parentSOQLRelationshipName = actualParentQueryBuilder.parentRelationshipName;
+        if(parentSOQLRelationshipName==null){
+            parentSOQLRelationshipName = convertParentRelationshipNameToSOQLFormat(
+                                        actualParentQueryBuilder.currentSObjectType.getDescribe().getName());
+        }
+        if(actualParentQueryBuilder.parentQueries!=null && actualParentQueryBuilder.parentQueries.size()>0){
+            ParentQueryTraverseResult parentQueryTraverseResult = traverseParentQueryBuilder(actualParentQueryBuilder.parentQueries.get(0));
+            actualParentQueryBuilder = parentQueryTraverseResult.parentQueryBuilder;
+            parentSOQLRelationshipName += '.'+parentQueryTraverseResult.parentSOQLRelationshipName;
+        }
+        return new ParentQueryTraverseResult(parentSOQLRelationshipName,actualParentQueryBuilder);
+    }
+    class ParentQueryTraverseResult{
+        public final String parentSOQLRelationshipName;
+        public final SOQLQueryBuilder parentQueryBuilder;
+        ParentQueryTraverseResult(String parentSOQLRelationshipName, SOQLQueryBuilder parentQueryBuilder){
+            this.parentSOQLRelationshipName = parentSOQLRelationshipName;
+            this.parentQueryBuilder = parentQueryBuilder;
+        }
     }
     private LogicalOperatorStatement generateWhereStatement(Map<FieldNameId,Object> fieldNameIdValueMap){
         return generateLogicalOperatorStatement(fieldNameIdValueMap,WHERE_STR);

@@ -1336,7 +1336,7 @@ public with sharing class SOQLQueryBuilder {
      */
     public List<SObject> getResultList(AccessLevel accessLevel){
         QueryStringResult queryResult = getQueryStringResult();
-        return Database.queryWithBinds(queryResult.queryString,queryResult.objectBinds,accessLevel);
+        return Database.queryWithBinds(queryResult.queryString,queryResult.bindVariables,accessLevel);
     }
     /**
      * Returns a list of SObjects with Access Level set to SYSTEM_MODE.
@@ -1416,7 +1416,7 @@ public with sharing class SOQLQueryBuilder {
       */
     public Integer getIntegerResult(AccessLevel accessLevel){
         QueryStringResult queryResult = getQueryStringResult();
-        return Database.countQueryWithBinds(queryResult.queryString,queryResult.objectBinds,accessLevel);
+        return Database.countQueryWithBinds(queryResult.queryString,queryResult.bindVariables,accessLevel);
     }
     /**
      * Returns an array of AggregateResult with Access Level set to SYSTEM_MODE.
@@ -1444,7 +1444,7 @@ public with sharing class SOQLQueryBuilder {
         return this.generateQuery(null).queryString;
     }
     /**
-    * Return the QueryStringResult object that contains the SOQL query string and the bind values for executing the query.
+    * Return the QueryStringResult object that contains the SOQL query string and the bind variables for executing the query.
     * @return QueryStringResult object
     */
     public QueryStringResult getQueryStringResult(){
@@ -1499,7 +1499,7 @@ public with sharing class SOQLQueryBuilder {
                 ' (Name LIKE :value0 AND NumberOfEmployees > :value1) ' +
                 'OR NumberOfEmployees < :value2 OR AccountSource = :value3'
 
-     *  Map<String,Object> objectBinds = new Map<String,Object>{'value0' => '%'+ACCOUNT_NAME+'%','value1' => 20,'value2' => 10,'value3' => 'Web'};
+     *  Map<String,Object> bindValues = new Map<String,Object>{'value0' => '%'+ACCOUNT_NAME+'%','value1' => 20,'value2' => 10,'value3' => 'Web'};
      *
      * @param childRelationshipName Optional parameter, if specified, will override the sObject type name for the FROM clause in the query.
      * @return The final QueryStringResult object containing the final SOQL query string and the bind values.
@@ -1529,7 +1529,7 @@ public with sharing class SOQLQueryBuilder {
         LogicalOperatorStatement havingStatement = generateHavingStatement(this.fieldNameIdValueMap);
         //generate the order by statement
         String orderByStatement = generateOrderStatement(this.orderByFieldNameOrderMap,this.orderByFieldNameNullsFirstLastMap);
-        Map<String,Object> objectBinds = new Map<String,Object>();
+        Map<String,Object> bindVariables = new Map<String,Object>();
 
         //if no fields are specified, add the default field
         if(this.fields.size()==0){
@@ -1540,7 +1540,7 @@ public with sharing class SOQLQueryBuilder {
 
         if(innerQueryResult.queryString.length()>0){
             queryStatement+=','+innerQueryResult.queryString;
-            objectBinds.putAll(innerQueryResult.objectBinds);
+            bindVariables.putAll(innerQueryResult.bindVariables);
         }
         if(parentFields.length()>0){
             queryStatement+= ','+parentFields;
@@ -1550,7 +1550,7 @@ public with sharing class SOQLQueryBuilder {
 
         if(whereStatement.logicalOperatorStatement.length()>0){
             queryStatement += ' '+whereStatement.logicalOperatorStatement;
-            objectBinds.putAll(whereStatement.objectBinds);
+            bindVariables.putAll(whereStatement.bindVariables);
         }
         if(usingScopeStatement.length()>0){
             queryStatement += ' '+usingScopeStatement;
@@ -1563,7 +1563,7 @@ public with sharing class SOQLQueryBuilder {
         }
         if(havingStatement.logicalOperatorStatement.length()>0){
             queryStatement += ' '+havingStatement.logicalOperatorStatement;
-            objectBinds.putAll(havingStatement.objectBinds);
+            bindVariables.putAll(havingStatement.bindVariables);
         }
         if(orderByStatement.length()>0){
             queryStatement += ' '+orderByStatement;
@@ -1594,14 +1594,14 @@ public with sharing class SOQLQueryBuilder {
         }
         queryStatement +=' ';
         System.debug(queryStatement);
-        return new QueryStringResult(queryStatement, objectBinds);
+        return new QueryStringResult(queryStatement, bindVariables);
     }
     public class QueryStringResult {
-        public final Map<String, Object> objectBinds;
+        public final Map<String, Object> bindVariables;
         public final String queryString;
-        QueryStringResult(String queryString, Map<String, Object> objectBinds) {
+        QueryStringResult(String queryString, Map<String, Object> bindVariables) {
             this.queryString = queryString;
-            this.objectBinds = objectBinds;
+            this.bindVariables = bindVariables;
         }
     }
     /**
@@ -1613,7 +1613,7 @@ public with sharing class SOQLQueryBuilder {
     */
     private QueryStringResult generateInnerQueriesString(List<SOQLQueryBuilder> innerQueries){
         String innerQueryString = '';
-        Map<String,Object> objectBinds = new Map<String,Object>();
+        Map<String,Object> bindVariables = new Map<String,Object>();
         SOQLQueryBuilder actualInnerQueryBuilder;
         if(innerQueries!=null && innerQueries.size()>0){
             for(SOQLQueryBuilder innerQueryBuilder:innerQueries){
@@ -1628,14 +1628,14 @@ public with sharing class SOQLQueryBuilder {
                 //add the child query to the inner query string
                 QueryStringResult innerQueryResult = generateInnerQueryString(innerQueryBuilder);
                 innerQueryString += '('+innerQueryResult.queryString+'),';
-                objectBinds.putAll(innerQueryResult.objectBinds);
+                bindVariables.putAll(innerQueryResult.bindVariables);
             }
             //set the bind value index to the bind value index of the last inner query builder
             //to continue the bind value indexing from there
             this.bindValueIndex = actualInnerQueryBuilder.bindValueIndex++;
             innerQueryString = innerQueryString.substring(0,innerQueryString.lastIndexOf(','));
         }
-        return new QueryStringResult(innerQueryString, objectBinds);
+        return new QueryStringResult(innerQueryString, bindVariables);
     }
     /**
      * Generates a QueryStringResult object for the given SOQLQueryBuilder's child relationship name,
@@ -1737,25 +1737,25 @@ public with sharing class SOQLQueryBuilder {
     */
     private LogicalOperatorStatement generateLogicalOperatorStatement(Map<FieldNameId,Object> fieldNameIdValueMap,String statementOperator){
         String logicalOperatorStatement = '';
-        Map<String,Object> objectBinds = new Map<String,Object>();
+        Map<String,Object> bindVariables = new Map<String,Object>();
         if(fieldNameIdValueMap.keySet().size()>0){
             for(FieldNameId fieldNameId : fieldNameIdValueMap.keySet()){
                 if(fieldNameId.state.endsWithIgnoreCase(statementOperator)){
                     LogicalStatement logicalStatement = generateLogicalStatement(fieldNameId);
                     logicalOperatorStatement += logicalStatement.logicalStatement;
-                    objectBinds.put(logicalStatement.bindValueKey,logicalStatement.value);
+                    bindVariables.put(logicalStatement.bindValueKey,logicalStatement.value);
                 }
             }
             logicalOperatorStatement = logicalOperatorStatement.length()>0 ? statementOperator+' '+ logicalOperatorStatement: '';
         }
-        return new LogicalOperatorStatement(logicalOperatorStatement,objectBinds);
+        return new LogicalOperatorStatement(logicalOperatorStatement,bindVariables);
     }
     class LogicalOperatorStatement{
         final String logicalOperatorStatement;
-        final Map<String,Object> objectBinds;
-        LogicalOperatorStatement(String logicalOperatorStatement, Map<String,Object> objectBinds){
+        final Map<String,Object> bindVariables;
+        LogicalOperatorStatement(String logicalOperatorStatement, Map<String,Object> bindVariables){
             this.logicalOperatorStatement = logicalOperatorStatement;
-            this.objectBinds = objectBinds;
+            this.bindVariables = bindVariables;
         }
     }
     /**

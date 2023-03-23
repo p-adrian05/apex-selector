@@ -1,12 +1,11 @@
 # Dynamic Apex Repository Layer
 
-Provides a flexible and dynamic extensible Repository layer for SObjects.
-
-NEW: Using the new Database.queryWithBinds method for dynamic variable binding
+Provides a flexible and dynamic extensible Repository layer for SObjects and a SOQL Query Builder implementation 
+using the Database.queryWithBinds method for dynamic variable binding.
 
 A repository layer is a design pattern in software architecture that provides an abstraction between the data access code and the rest of the application. The repository pattern allows for the encapsulation of data access logic. It help to maintain the clean separation of concerns between the business logic and data access logic making the codebase more robust and maintainable.
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YytWQAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000Yyy3QAC">
 <img alt="Deploy to Salesforce"
 src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
@@ -74,13 +73,17 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
         .selectSpecificFields(new List<SObjectField>{Account.Name,Account.AccountSource});
 ```
 ### Results
-
+- There are several methods that can be used to retrieve the results of the query.
+- It is possible to set the access level for every type of result query, the default level is SYSTEM_MODE.
 ```Apex
+ 
     Account account = (Account) accountQuery.getSingleResult();
     //if the value is null, an SObjectException will be thrown with the given message
     Account account = (Account) accountQuery.getSingleResult('Account not found!');
 
     List<Account> accounts = accountQuery.getResultList();
+    // specify the access level to USER_MODE
+    List<Account> accounts = accountQuery.getResultList(AccessLevel.USER_MODE);
 
     Map<Id,SObject> accountMap = soqlQueryBuilder.getResultMap();
 
@@ -100,7 +103,7 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
         .selectSpecificFields(new List<SObjectField>{Account.Name,
                 Account.AccountSource,Account.NumberOfEmployees})
         .whereOpenBracket(Account.Name)
-        .likeValue('%'+ACCOUNT_NAME+'%')
+        .likeValue('%Test account name%')
         .andCloseBracket(Account.NumberOfEmployees)
         .greaterThan(20)
         .orCondition(Account.NumberOfEmployees)
@@ -111,7 +114,7 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 
     'SELECT Name,AccountSource,NumberOfEmployees FROM Account WHERE  ' +
     '(Name LIKE \'%Test account name%\'  AND  NumberOfEmployees > 20) OR  NumberOfEmployees < 10  ' +
-    'OR  AccountSource = \'Web\'   LIMIT 4';
+    'OR  AccountSource = \'Web\' LIMIT 4';
 ```
 ### Select records with group by and having statements
 - First, it creates an instance of the SOQLFunction class, representing COUNT function that can be used in a SOQL query. The countFunction will return the count of the Id field for all returned records.
@@ -123,7 +126,7 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
         .selectSpecificFields(new List<SObjectField>{Account.AccountSource})
         .addFunction(countFunction)
         .whereClause(Account.Name)
-        .likeValue('%'+ACCOUNT_NAME+'%')
+        .likeValue('%Test account name%')
         .orOpenBracket(Account.Name)
         .notLikeValue('%builder%')
         .orCloseBracket(Account.NumberOfEmployees)
@@ -159,7 +162,7 @@ otherwise if there are multiple relationships the setChildRelationshipName metho
         .addInnerQuery(new SOQLQueryBuilder(Case.getSObjectType())
                 .selectSpecificFields(new List<SObjectField>{Case.SuppliedName}))
         .whereClause(Contact.Name)
-        .likeValue('%'+ACCOUNT_NAME+'%');
+        .likeValue('%Test account name%');
 
    'SELECT Name,(SELECT Name FROM Contacts ),' +
             '(SELECT SuppliedName FROM Cases ) ' + 
@@ -168,31 +171,27 @@ otherwise if there are multiple relationships the setChildRelationshipName metho
 ### Select records with parent fields
 - The addParentQuery is used to query parent records through a relationship creating new SOQLQueryBuilder instances for them.
 - If the parent relationship is not specified, the query will use the SObjectType name as the relationship name otherwise, the setParentRelationshipName method is used to specify the relationship name.
-
 ```Apex
     SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
-        .selectSpecificFields(new List<SObjectField>{
-                Contact.LastName
-        })
+        .selectSpecificFields(new List<SObjectField>{Contact.LastName})
         .addParentQuery(new SOQLQueryBuilder(Account.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{
-                        Account.Name
-                }))
+                .selectSpecificFields(new List<SObjectField>{Account.Name}))
         .addParentQuery(new SOQLQueryBuilder(Contact.getSObjectType())
-                .selectSpecificFields(new List<SObjectField>{
-                        Contact.Name
-                })
-                .setParentRelationshipName('ReportsTo'))
+                            .setParentRelationshipName('ReportsTo')
+                            .addParentQuery(new SOQLQueryBuilder(Account.getSObjectType())
+                                            .selectSpecificFields(new List<SObjectField>{Account.Name})))
         .whereClause(Contact.LastName)
-        .likeValue('%' + CONTACT_LAST_NAME + '%');
+        .likeValue('%Contact lastName%')
+        .andCondition('Account.Name')
+        .likeValue('%Test account name%');
 
-'SELECT LastName,Account.Name,ReportsTo.Name FROM Contact ' +
-        'WHERE LastName LIKE \'%Contact lastName%\'';
+          'SELECT LastName,Account.Name,ReportsTo.Account.Name FROM Contact' +
+          ' WHERE  LastName LIKE \'%Contact lastName%\' AND Account.Name LIKE \'%Test account name%\'';
+
 ```
 
 ### Select records with order by statements
 - The orderBy method is used to sort the records by a certain field. in this example, the query will first sort the records by the "Name" field in ascending order with the nulls first and then by the "NumberOfEmployees" field in descending order with the nulls last.
-
 - The methods ascending() and descending() specify the sort direction, while the nullsFirst() and nullsLast() specifies the null values handling.
 ```Apex
       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Account.getSObjectType())

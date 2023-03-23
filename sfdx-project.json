@@ -4,8 +4,8 @@
       "path": "force-app",
       "default": true,
       "package": "Apex Repository",
-      "versionName": "ver 2.1.0`",
-      "versionNumber": "2.1.0.NEXT"
+      "versionName": "ver 2.1.2",
+      "versionNumber": "2.1.2.NEXT"
     }
   ],
   "name": "ApexRepository",
@@ -26,6 +26,9 @@
     "Apex Repository@1.3.0-1": "04t7Q000000YynIQAS",
     "Apex Repository@1.3.0-2": "04t7Q000000YytRQAS",
     "Apex Repository@2.0.0-1": "04t7Q000000YytWQAS",
-    "Apex Repository@2.1.0-1": "04t7Q000000Yyy3QAC"
+    "Apex Repository@2.1.0-1": "04t7Q000000Yyy3QAC",
+    "Apex Repository@2.1.0-2": "04t7Q000000Yyy8QAC",
+    "Apex Repository@2.1.1-1": "04t7Q000000YyyDQAS",
+    "Apex Repository@2.1.2-1": "04t7Q000000YyyIQAS"
   }
 }

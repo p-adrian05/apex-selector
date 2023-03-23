@@ -1,11 +1,10 @@
 # Dynamic Apex Repository Layer
 
-Provides a flexible and dynamic extensible Repository layer for SObjects and a SOQL Query Builder implementation 
-using the Database.queryWithBinds method for dynamic variable binding.
+Provides a flexible and dynamic extensible Repository layer for SObjects and an SOQL Query Builder implementation.
 
 A repository layer is a design pattern in software architecture that provides an abstraction between the data access code and the rest of the application. The repository pattern allows for the encapsulation of data access logic. It help to maintain the clean separation of concerns between the business logic and data access logic making the codebase more robust and maintainable.
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000Yyy3QAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YyyIQAS">
 <img alt="Deploy to Salesforce"
 src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
@@ -34,11 +33,9 @@ A dynamic SOQL Builder class in Apex is a class that is used to construct SOQL (
 There are several reasons why it is important to have a dynamic SOQL Builder class in Apex:
 
 - Dynamic querying: A dynamic SOQL Builder class allows for the construction of queries at runtime, which can be useful in situations where the specific query needed is not known until runtime. This is especially useful for situations where a user needs to search for data based on certain criteria, as the specific search criteria are not known until the user inputs them.
-
 - Improved readability and maintainability: A dynamic SOQL Builder class can make the code more readable and maintainable. Because the query is constructed programmatically, it can be more easily understood and modified, rather than having a large, complex string of query text.
-
 - Flexibility and reusability: Dynamic SOQL Builder class allows for greater flexibility and reusability in the code. By encapsulating the logic for building SOQL queries into a single class, it can be reused throughout the application, which can save development time and help ensure consistency in how data is queried.
-
+- Security: It can help to ensure that the queries being built are secure by using dynamic variable binding with the new <a href="https://help.salesforce.com/s/articleView?id=release-notes.rn_apex_bind_var_soql.htm&release=242&type=5">Database.queryWithBinds</a> method.
 
 ## Examples
 
@@ -76,7 +73,6 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 - There are several methods that can be used to retrieve the results of the query.
 - It is possible to set the access level for every type of result query, the default level is SYSTEM_MODE.
 ```Apex
- 
     Account account = (Account) accountQuery.getSingleResult();
     //if the value is null, an SObjectException will be thrown with the given message
     Account account = (Account) accountQuery.getSingleResult('Account not found!');
@@ -90,7 +86,13 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
     Integer accountCount = soqlQueryBuilder.getIntegerResult();
 
     AggregateResult[] accountCountAggregate = soqlQueryBuilder.getAggregateResult();
-
+    
+    //get the query string and the bind variables that is used to execute the query
+    SOQLQueryBuilder.QueryStringResult queryStringResult = accountQuery.getQueryStringResult();
+    //SELECT Name,NumberOfEmployees FROM Account WHERE Name LIKE :value0 AND NumberOfEmployees > :value1 
+    String actualQueryString = queryStringResult.queryString;
+    //Map<String,Object>{'value0' => '%test%','value1' => 20};
+    Map<String,Object> actualBindVariables = queryStringResult.bindVariables;
 ```
 
 ### Select records with complex conditions
@@ -202,7 +204,7 @@ otherwise if there are multiple relationships the setChildRelationshipName metho
         .orderBy(Account.Name).ascending().nullsFirst()
         .orderBy(Account.NumberOfEmployees).descending().nullsLast();
 
-'SELECT Name,NumberOfEmployees FROM Account WHERE ' +
+        'SELECT Name,NumberOfEmployees FROM Account WHERE ' +
         'NumberOfEmployees NOT IN (10,40,22,23) ' +
         'ORDER BY Name ASC NULLS FIRST, NumberOfEmployees DESC NULLS LAST';
 ```

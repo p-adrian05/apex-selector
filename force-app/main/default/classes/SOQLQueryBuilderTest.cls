@@ -28,18 +28,17 @@ public with sharing class SOQLQueryBuilderTest {
         insert contacts;
 
     }
-    private static void assertQueryStringResult(SOQLQueryBuilder soqlQueryBuilder,Map<String,Object> expectedValues, String expectedQueryString){
+    private static void assertQueryStringResult(SOQLQueryBuilder soqlQueryBuilder,Map<String,Object> expectedBindVariables, String expectedQueryString){
         SOQLQueryBuilder.QueryStringResult queryStringResult = soqlQueryBuilder.getQueryStringResult();
         String actualQueryString = queryStringResult.queryString;
-        Map<String,Object> actualValues = queryStringResult.objectBinds;
-
-        System.debug(actualValues);
-        System.debug(actualQueryString);
+        Map<String,Object> actualBindVariables = queryStringResult.bindVariables;
         //assert actual actualValues to expectedValues
-        Assert.areEqual(expectedValues.size(),actualValues.size(),'Expected values size is '+expectedValues.size()+' but actual values size is '+actualValues.size());
-        for(String key: expectedValues.keySet()){
-            Assert.isTrue(actualValues.containsKey(key),'Actual values does not contain key '+key );
-            Assert.areEqual(expectedValues.get(key),actualValues.get(key),'Expected value for key '+key+' is '+expectedValues.get(key)+' but actual value is '+actualValues.get(key));
+        Assert.areEqual(expectedBindVariables.size(),actualBindVariables.size(),'Expected values size is '
+                +expectedBindVariables.size()+' but actual values size is '+actualBindVariables.size());
+        for(String key: expectedBindVariables.keySet()){
+            Assert.isTrue(actualBindVariables.containsKey(key),'Actual values does not contain key '+key );
+            Assert.areEqual(expectedBindVariables.get(key),actualBindVariables.get(key),'Expected value for key '
+                    +key+' is '+expectedBindVariables.get(key)+' but actual value is '+actualBindVariables.get(key));
         }
         //assert actual query string to expected query string
         Assert.areEqual(expectedQueryString.deleteWhitespace(),actualQueryString.deleteWhitespace());

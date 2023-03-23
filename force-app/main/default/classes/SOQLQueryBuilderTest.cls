@@ -32,7 +32,9 @@ public with sharing class SOQLQueryBuilderTest {
         SOQLQueryBuilder.QueryStringResult queryStringResult = soqlQueryBuilder.getQueryStringResult();
         String actualQueryString = queryStringResult.queryString;
         Map<String,Object> actualValues = queryStringResult.objectBinds;
+
         System.debug(actualValues);
+        System.debug(actualQueryString);
         //assert actual actualValues to expectedValues
         Assert.areEqual(expectedValues.size(),actualValues.size(),'Expected values size is '+expectedValues.size()+' but actual values size is '+actualValues.size());
         for(String key: expectedValues.keySet()){
@@ -356,19 +358,21 @@ public with sharing class SOQLQueryBuilderTest {
     }
     @IsTest
     public static void testParentAccountQueryWithContactShouldReturnContact(){
-      Map<String,Object> expectedValues = new Map<String,Object>{'value0'=>'%'+CONTACT_LAST_NAME+'%'};
+      Map<String,Object> expectedValues = new Map<String,Object>{'value0'=>'%'+CONTACT_LAST_NAME+'%','value1'=>'%'+ACCOUNT_NAME+'%'};
       SOQLQueryBuilder soqlQueryBuilder = new SOQLQueryBuilder(Contact.getSObjectType())
               .selectSpecificFields(new List<SObjectField>{Contact.LastName})
                 .addParentQuery(new SOQLQueryBuilder(Account.getSObjectType())
                         .selectSpecificFields(new List<SObjectField>{Account.Name}))
                  .addParentQuery(new SOQLQueryBuilder(Contact.getSObjectType())
-                         .selectSpecificFields(new List<SObjectField>{Contact.Name})
-                         .setParentRelationshipName('ReportsTo'))
+                                    .setParentRelationshipName('ReportsTo')
+                                        .addParentQuery(new SOQLQueryBuilder(Account.getSObjectType())
+                                        .selectSpecificFields(new List<SObjectField>{Account.Name})))
                 .whereClause(Contact.LastName)
-                .likeValue((String) expectedValues.get('value0'));
+                .likeValue((String) expectedValues.get('value0'))
+              .andCondition('Account.Name').likeValue((String) expectedValues.get('value1'));
 
-        String expectedQueryString = 'SELECT LastName,Account.Name,ReportsTo.Name FROM Contact WHERE ' +
-                ' LastName LIKE :value0';
+        String expectedQueryString = 'SELECT LastName,Account.Name,ReportsTo.Account.Name FROM Contact' +
+                                ' WHERE  LastName LIKE :value0 AND Account.Name LIKE :value1';
 
         Contact contact = (Contact) soqlQueryBuilder.getSingleResult();
 

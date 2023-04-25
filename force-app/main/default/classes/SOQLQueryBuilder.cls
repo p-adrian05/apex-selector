@@ -3,7 +3,7 @@
  *  SOQLQueryBuilder is a utility class to build SOQL queries in dynamic way.
  *
 */
-public with sharing class SOQLQueryBuilder {
+public inherited sharing class SOQLQueryBuilder {
 
     private final static String OP_AND = 'AND';
     private final static String OP_OR = 'OR';

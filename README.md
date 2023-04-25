@@ -34,7 +34,7 @@ public abstract with sharing class ObjectSelectorImpl implements ObjectSelector{
     }
 }
 ```
-# Object Selector Implementation
+
 Account Selector Implementation example:
 ```Apex
 public class AccountsSelector extends ObjectSelectorImpl {

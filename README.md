@@ -26,7 +26,7 @@ public class AccountsSelector extends ObjectSelectorImpl {
                 Account.AnnualRevenue
         };
     }
-    //implement you custom query methods
+    //custom query methods
     public List<Account> getAccountsByIds(List<Id> ids) {
         return (List<Account>) selectByIds(ids);
     }

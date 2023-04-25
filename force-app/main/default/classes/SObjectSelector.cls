@@ -1,5 +1,5 @@
 
-public interface ObjectSelector {
+public interface SObjectSelector {
 
     SObjectType getSObjectType();
 

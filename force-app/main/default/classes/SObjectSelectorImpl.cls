@@ -1,5 +1,5 @@
 
-public abstract with sharing class ObjectSelectorImpl implements ObjectSelector{
+public abstract with sharing class SObjectSelectorImpl implements SObjectSelector {
 
     public abstract SObjectType getSObjectType();
 

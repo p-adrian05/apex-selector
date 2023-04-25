@@ -1,5 +1,5 @@
 
-public class AccountsSelector extends ObjectSelectorImpl {
+public class AccountsSelector extends SObjectSelectorImpl {
     public override SObjectType getSObjectType() {
         return Account.getSObjectType();
     }

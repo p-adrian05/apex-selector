@@ -1,5 +1,5 @@
 @IsTest
-public with sharing class ObjectSelectorImplTest {
+public with sharing class SObjectSelectorImplTest {
 
     @TestSetup
     public static void setup() {
@@ -15,7 +15,7 @@ public with sharing class ObjectSelectorImplTest {
     @IsTest
     public static void testSelectByIdShouldReturnAccount(){
         Account account = [SELECT Id FROM Account LIMIT 1];
-        ObjectSelector accountSelector = new AccountsSelector();
+        SObjectSelector accountSelector = new AccountsSelector();
         Account queriedAccount = (Account) accountSelector.selectById(account.Id);
 
         Assert.areEqual(account.Id,queriedAccount.Id);

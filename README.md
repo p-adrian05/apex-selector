@@ -1,29 +1,50 @@
-# Dynamic Apex Repository Layer
+# Dynamic Apex Selector Layer
 
-Provides a flexible and dynamic extensible Repository layer for SObjects and an SOQL Query Builder implementation.
+Provides a flexible and dynamic extensible Selector layer for SObjects and an SOQL Query Builder implementation.
 
-A repository layer is a design pattern in software architecture that provides an abstraction between the data access code and the rest of the application. The repository pattern allows for the encapsulation of data access logic. It help to maintain the clean separation of concerns between the business logic and data access logic making the codebase more robust and maintainable.
+The Selector Pattern a layer of code that encapsulates logic responsible for querying information from standard objects and your custom objects. 
+The selector layer feeds that data into your Domain layer and Service layer code. You can also reuse selector classes from other areas that require querying, such as Batch Apex and controllers.
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000YyyIQAS">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000Z0c5QAC">
 <img alt="Deploy to Salesforce"
 src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
 
-# Object Repository
-Provides a generic repository implementation with basic queries.
-
+# Object Selector
+Provides a generic abstract class for implementing SObject selectors.
+- Example:
 ```Apex
-ObjectRepository accountRepository = new ObjectRepositoryImpl(Account.getSObjectType());
-
-Optional accountOptional = accountRepository.findById('0017Q00000KefG7QAJ');
-
-if(accountOptional.isPresent()){
-    Account account =  (Account) accountOptional.get();
+public class AccountsSelector extends ObjectSelectorImpl {
+    
+    public override SObjectType getSObjectType() {
+        return Account.getSObjectType();
+    }
+    public override List<SObjectField> getSObjectFieldList() {
+        return new List<SObjectField>{
+                Account.Name,
+                Account.Description,
+                Account.AnnualRevenue
+        };
+    }
+    //implement you custom query methods
+    public List<Account> getAccountsByIds(List<Id> ids) {
+        return (List<Account>) selectByIds(ids);
+    }
+    public List<Account> findByName(String name){
+        return new SOQLQueryBuilder(getSObjectType())
+                .selectSpecificFields(getSObjectFieldList())
+                .whereClause(Account.Name)
+                .likeValue('%'+name+'%')
+                .getResultList();
+    }
 }
+```
+```Apex
+ObjectSelector accountsSelector = new AccountsSelector();
 
-Map<Id,SObject> accountMap = accountRepository.findAllById(new List<Id>{'0017Q00000KefG7QAJ'});
-List<Account> accounts = accountMap.values();
+Account account = (Account) accountsSelector.selectById('0017Q00000KefG7QAJ');
 
+List<Account> accounts = accountsSelector.selectByIds(new List<Id>{'0017Q00000KefG7QAJ'});
 ```
 
 # SOQL Builder

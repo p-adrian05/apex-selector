@@ -4,14 +4,14 @@
       "path": "force-app",
       "default": true,
       "package": "Apex Repository",
-      "versionName": "ver 2.1.2",
-      "versionNumber": "2.1.2.NEXT"
+      "versionName": "ver 2.2.0",
+      "versionNumber": "2.2.0.NEXT"
     }
   ],
   "name": "ApexRepository",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
-  "sourceApiVersion": "55.0",
+  "sourceApiVersion": "57.0",
   "packageAliases": {
     "Apex Repository": "0Ho7Q000000XZTsSAO",
     "Apex Repository@0.1.0-1": "04t7Q000000Yw20QAC",
@@ -29,6 +29,7 @@
     "Apex Repository@2.1.0-1": "04t7Q000000Yyy3QAC",
     "Apex Repository@2.1.0-2": "04t7Q000000Yyy8QAC",
     "Apex Repository@2.1.1-1": "04t7Q000000YyyDQAS",
-    "Apex Repository@2.1.2-1": "04t7Q000000YyyIQAS"
+    "Apex Repository@2.1.2-1": "04t7Q000000YyyIQAS",
+    "Apex Repository@2.2.0-1": "04t7Q000000Z0c5QAC"
   }
 }

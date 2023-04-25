@@ -117,7 +117,7 @@ There are several reasons why it is important to have a dynamic SOQL Builder cla
 ```
 
 ### Select records with complex conditions
-- The whereOpenBracket method is used to open a bracket for a WHERE clause in the query. The likeValue method is then used to add a condition to the WHERE clause that filters for records where the "Name" field contains the value of the variable ACCOUNT_NAME.
+- The whereOpenBracket method is used to open a bracket for a WHERE clause in the query. The likeValue method is then used to add a condition to the WHERE clause that filters for records where the "Name" field contains the given value.
 - The andCloseBracket method is used to close the bracket, and the greaterThan method is used to add another condition to the WHERE clause that filters for records where the "NumberOfEmployees" field is greater than 20.
 - Then, orCondition is used twice to add conditions that filter the results with lessThan which filters the "NumberOfEmployees" field is less than 10 and equals that filter the "AccountSource" field is equal to 'Web'
 - Finally, the addLimit method is used to specify that the query should return a maximum of 4 records.

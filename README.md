@@ -5,20 +5,21 @@ Provides a flexible and dynamic extensible Selector layer for SObjects and an SO
 The Selector Pattern a layer of code that encapsulates logic responsible for querying information from standard objects and your custom objects. 
 The selector layer feeds that data into your Domain layer and Service layer code. You can also reuse selector classes from other areas that require querying, such as Batch Apex and controllers.
 
-<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000Z0c5QAC">
+<a href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t7Q000000Z0cAQAS">
 <img alt="Deploy to Salesforce"
 src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
 
-# Object Selector
+# SObject Selector
 Provides a generic abstract class for implementing SObject selectors.
+
 ```Apex
-public abstract with sharing class ObjectSelectorImpl implements ObjectSelector{
+public abstract with sharing class SObjectSelectorImpl implements SObjectSelector {
 
     public abstract SObjectType getSObjectType();
 
     public abstract List<SObjectField> getSObjectFieldList();
-    
+
     public virtual SObject selectById(Id objectId) {
         return new SOQLQueryBuilder(getSObjectType())
                 .selectSpecificFields(getSObjectFieldList())
@@ -36,9 +37,10 @@ public abstract with sharing class ObjectSelectorImpl implements ObjectSelector{
 ```
 
 Account Selector Implementation example:
+
 ```Apex
-public class AccountsSelector extends ObjectSelectorImpl {
-    
+public class AccountsSelector extends SObjectSelectorImpl {
+
     public override SObjectType getSObjectType() {
         return Account.getSObjectType();
     }
@@ -53,21 +55,24 @@ public class AccountsSelector extends ObjectSelectorImpl {
     public List<Account> getAccountsByIds(List<Id> ids) {
         return (List<Account>) selectByIds(ids);
     }
-    public List<Account> findByName(String name){
+    public List<Account> findByName(String name) {
         return new SOQLQueryBuilder(getSObjectType())
                 .selectSpecificFields(getSObjectFieldList())
                 .whereClause(Account.Name)
-                .likeValue('%'+name+'%')
+                .likeValue('%' + name + '%')
                 .getResultList();
     }
 }
 ```
+
 ```Apex
-ObjectSelector accountsSelector = new AccountsSelector();
+AccountsSelector accountsSelector = new AccountsSelector();
 
 Account account = (Account) accountsSelector.selectById('0017Q00000KefG7QAJ');
 
-List<Account> accounts = accountsSelector.selectByIds(new List<Id>{'0017Q00000KefG7QAJ'});
+List<Account> accounts = accountsSelector.getAccountsByIds(new List<Id>{
+        '0017Q00000KefG7QAJ'
+});
 ```
 
 # SOQL Builder
